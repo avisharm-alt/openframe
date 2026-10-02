@@ -17,6 +17,8 @@
     "db:migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts",
     "db:seed-demo": "tsx --env-file-if-exists=.env.local scripts/seed-demo.ts",
     "db:backup": "tsx --env-file-if-exists=.env.local scripts/backup.ts",
+    "db:verify-backup": "tsx --env-file-if-exists=.env.local scripts/verify-backup.ts",
+    "deploy:preflight": "node scripts/check-deploy-env.mjs",
     "admin:grant": "tsx --env-file-if-exists=.env.local scripts/grant-role.ts",
     "admin:purge-guests": "tsx --env-file-if-exists=.env.local scripts/purge-guest-sessions.ts",
     "admin:delete-user": "tsx --env-file-if-exists=.env.local scripts/delete-user.ts",

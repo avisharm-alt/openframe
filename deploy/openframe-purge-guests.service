@@ -1,0 +1,14 @@
+[Unit]
+Description=Purge OpenFrame guest sessions older than 30 days
+
+[Service]
+Type=oneshot
+User=openframe
+Group=openframe
+WorkingDirectory=/opt/openframe
+EnvironmentFile=/etc/openframe/openframe.env
+ExecStartPre=/usr/bin/npm run deploy:preflight
+ExecStart=/usr/bin/npm run admin:purge-guests -- 30
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true

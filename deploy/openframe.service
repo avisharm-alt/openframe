@@ -1,0 +1,22 @@
+[Unit]
+Description=OpenFrame Next.js server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=openframe
+Group=openframe
+WorkingDirectory=/opt/openframe
+EnvironmentFile=/etc/openframe/openframe.env
+ExecStartPre=/usr/bin/npm run deploy:preflight
+ExecStartPre=/usr/bin/npm run db:migrate
+ExecStart=/usr/bin/npm run start -- --hostname 127.0.0.1 --port 3000
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

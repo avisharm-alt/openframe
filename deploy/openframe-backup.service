@@ -1,0 +1,14 @@
+[Unit]
+Description=Back up the OpenFrame SQLite database
+
+[Service]
+Type=oneshot
+User=openframe
+Group=openframe
+WorkingDirectory=/opt/openframe
+EnvironmentFile=/etc/openframe/openframe.env
+ExecStartPre=/usr/bin/npm run deploy:preflight
+ExecStart=/usr/bin/npm run db:backup
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true

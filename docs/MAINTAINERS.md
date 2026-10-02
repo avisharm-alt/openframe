@@ -56,8 +56,9 @@ Edits to a published question create a new revision that goes back through revie
 The whole site state is one SQLite file (plus `-wal`/`-shm` while running).
 
 ```bash
-npm run db:backup                              # writes backups/openframe-YYYY-MM-DD.db (safe while the site is running)
+npm run db:backup                              # writes a timestamped file in BACKUP_DIRECTORY or ./backups
 npm run db:backup -- /safe/place/openframe.db
+npm run db:verify-backup -- /safe/place/openframe.db  # checks a temporary restored copy
 ```
 
 Schedule it (cron/systemd timer) and copy backups off the machine. Backups contain personal data (emails, hashes, history): store and delete them accordingly, and remember deleted accounts persist in older backups until those expire.

@@ -1,0 +1,4 @@
+# Replace the hostname with the domain in BASE_URL and point its DNS record at this server.
+openframe.example.org {
+    reverse_proxy 127.0.0.1:3000
+}

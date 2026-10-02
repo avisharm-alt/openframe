@@ -63,6 +63,8 @@ See `.env.example`. Key ones: `BASE_URL`, `AUTH_SECRET` (required in production,
 
 ### Production
 
+For a concrete one-server setup with systemd, Caddy, scheduled backups and a restore check, see [deploy/README.md](deploy/README.md).
+
 ```bash
 npm ci && npm run build
 AUTH_SECRET=... BASE_URL=https://your.site DATABASE_PATH=/var/lib/openframe/openframe.db TRUST_PROXY=1 npm start
