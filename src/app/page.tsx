@@ -12,9 +12,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
         <h1>Practice questions by course</h1>
         <p className="muted">Browse student-contributed questions by course or topic. Each question includes explanations, and you can practise without an account.</p>
         <form role="search" className="search" action="/" method="get">
-          <label htmlFor="q" className="sr-only">Search courses and topics</label>
-          <input id="q" name="q" type="search" defaultValue={q} placeholder="e.g. DEMO-102, statistics, recursion" autoComplete="off" />
-          <button className="btn">Search</button>
+          <label htmlFor="q" className="search-label">Search courses and topics</label>
+          <div className="search-controls">
+            <input id="q" name="q" type="search" defaultValue={q} placeholder="Course code, title, or topic" autoComplete="off" />
+            <button className="btn">Search</button>
+          </div>
         </form>
       </section>
 
@@ -27,16 +29,18 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
           <ul className="listing">
             {courses.map((c) => (
               <li key={c.id}>
-                <div>
-                  <span className="title"><Link href={`/courses/${c.slug}`}>{c.code} · {c.title}</Link></span>{" "}
-                  {c.isDemo && <span className="badge demo">Demo course</span>}
-                  <p className="small muted">{c.universityName} · {c.subject}</p>
-                  <p className="small">
-                    <b>{c.reviewedCount}</b> student-reviewed · <b>{c.unreviewedCount}</b> unreviewed
+                <div className="course-details">
+                  <div className="course-title-row">
+                    <span className="title"><Link href={`/courses/${c.slug}`} aria-label={`${c.code} · ${c.title}`}><span className="course-code">{c.code}</span><span className="course-title">{c.title}</span></Link></span>
+                    {c.isDemo && <span className="badge demo">Demo course</span>}
+                  </div>
+                  <p className="small muted course-meta">{c.universityName} <span aria-hidden="true">/</span> {c.subject}</p>
+                  <p className="small course-counts">
+                    <span><b>{c.reviewedCount}</b> student-reviewed</span><span><b>{c.unreviewedCount}</b> unreviewed</span>
                     {c.topicMatches.length > 0 && <span className="muted"> · topic match: {c.topicMatches.join(", ")}</span>}
                   </p>
                 </div>
-                <Link className="btn secondary small" href={`/practice/setup?course=${c.slug}`}>Start practice</Link>
+                <Link className="course-action" href={`/practice/setup?course=${c.slug}`}>Start practice <span aria-hidden="true">→</span></Link>
               </li>
             ))}
           </ul>
