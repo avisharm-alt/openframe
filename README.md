@@ -17,6 +17,7 @@ OpenFrame is independent and is **not affiliated with or endorsed by Western Uni
 | Results with totals, topic table (with sample sizes), retry-missed | `/practice/[id]` |
 | Accounts, saved history, bookmarks (private) | `/saved`, `/account` |
 | Guided contribution editor with learner preview, drafts, revisions | `/contribute` |
+| Delete your own questions; maintainers can delete any question and publish their own without review (labelled Unreviewed) | `/contribute`, `/moderation?tab=questions` |
 | Reports (anyone, rate limited) and content-removal route | question "Report a problem", `/content-removal` |
 | Moderation: queue, checklist review, reports, course requests, audit log, withdrawal | `/moderation` |
 | Policies: About, Guidelines, Academic integrity, Privacy, Content removal | footer links |

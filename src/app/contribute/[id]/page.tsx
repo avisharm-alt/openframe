@@ -5,6 +5,7 @@ import { contributionTargets } from "@/lib/services/catalog";
 import { getMine } from "@/lib/services/contributions";
 import { ContributionEditor, ContributionStatus } from "@/components/ContributionEditor";
 import { ServiceError } from "@/lib/errors";
+import { isMaintainer } from "@/lib/types";
 
 export const metadata = { title: "Your question" };
 
@@ -25,7 +26,7 @@ export default async function EditQuestion({ params }: { params: Promise<{ id: s
       <p className="small"><Link href="/contribute">← Your contributions</Link></p>
       <h1>{c.revisionState === "draft" ? "Edit draft" : "Your question"}</h1>
       {c.revisionState === "draft" ? (
-        <ContributionEditor targets={targets} initial={{ id: c.id, draft: c.draft, revisionNumber: c.revisionNumber, hasLive: c.hasLive, requestedChanges: c.requestedChanges }} />
+        <ContributionEditor targets={targets} initial={{ id: c.id, draft: c.draft, revisionNumber: c.revisionNumber, hasLive: c.hasLive, requestedChanges: c.requestedChanges }} isMaintainer={isMaintainer(actor)} />
       ) : (
         <ContributionStatus c={{ id: c.id, state: c.state, revisionState: c.revisionState, revisionNumber: c.revisionNumber, requestedChanges: c.requestedChanges, draft: c.draft }} />
       )}

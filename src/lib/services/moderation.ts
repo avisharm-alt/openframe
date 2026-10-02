@@ -112,8 +112,8 @@ export function reviewRevision(actor: Actor, revisionId: string, raw: z.infer<ty
 export function withdrawQuestion(actor: Actor, questionId: string, reason: string, reportId?: string) {
   requireReviewer(actor);
   const db = getDb();
-  const q = db.prepare("SELECT state FROM question WHERE id = ?").get(questionId) as { state: string } | undefined;
-  if (!q) throw notFound("Question not found");
+  const q = db.prepare("SELECT state, deleted_at AS deletedAt FROM question WHERE id = ?").get(questionId) as { state: string; deletedAt: string | null } | undefined;
+  if (!q || q.deletedAt) throw notFound("Question not found");
   const why = reason.trim();
   if (why.length < 5) throw invalid("Give a short reason for the withdrawal.");
   db.transaction(() => {

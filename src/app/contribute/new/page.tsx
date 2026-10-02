@@ -2,6 +2,7 @@ import Link from "next/link";
 import { currentActor } from "@/lib/session";
 import { contributionTargets } from "@/lib/services/catalog";
 import { ContributionEditor } from "@/components/ContributionEditor";
+import { isMaintainer } from "@/lib/types";
 
 export const metadata = { title: "New question" };
 
@@ -12,7 +13,7 @@ export default async function NewQuestion() {
   return (
     <>
       <h1>New question</h1>
-      {targets.length === 0 ? <div className="notice warn">No courses are open for contributions yet.</div> : <ContributionEditor targets={targets} initial={null} />}
+      {targets.length === 0 ? <div className="notice warn">No courses are open for contributions yet.</div> : <ContributionEditor targets={targets} initial={null} isMaintainer={isMaintainer(actor)} />}
     </>
   );
 }

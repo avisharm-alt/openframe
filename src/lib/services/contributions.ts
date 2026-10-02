@@ -1,7 +1,7 @@
 import { getDb, uid, now, type DB } from "../db";
 import { ATTESTATION_TEXT } from "../config";
-import { ServiceError, conflict, invalid, notFound } from "../errors";
-import type { Actor } from "../types";
+import { ServiceError, conflict, forbidden, invalid, notFound } from "../errors";
+import { isMaintainer, type Actor } from "../types";
 import { contentFlags, draftSchema, similarity, structuralCheck, type DraftInput } from "../validation";
 import { logEvent } from "./events";
 
@@ -192,6 +192,35 @@ export function submit(actor: Actor, qid: string, attested: true) {
   })();
   logEvent(actor.id, "submitted", { questionId: qid, revisionId: r.id, detail: { number: r.number } });
   return { id: qid, state: "pending_review", warnings };
+}
+
+/**
+ * Maintainers only: publish their own draft immediately, without a second reviewer (nobody can review their own work, and a
+ * single maintainer would otherwise be unable to add content). It is labelled Unreviewed, because "student-reviewed" means
+ * another student checked it, and the audit log records that it skipped review. The originality statement is still required.
+ */
+export function publishAsMaintainer(actor: Actor, qid: string, attested: true) {
+  if (!isMaintainer(actor)) throw forbidden("Only maintainers can publish without review.");
+  const db = getDb();
+  if (attested !== true) throw invalid("You must accept the originality and permission statement.");
+  const q = ownQuestion(db, actor, qid);
+  const r = latest(db, qid);
+  if (r.state !== "draft") throw conflict("not_draft", "Only drafts can be published.");
+  assertTarget(db, q.course_id, r.topic_id);
+  const d = readDraft(db, q, r);
+  const { errors, warnings } = structuralCheck(d);
+  if (errors.length) throw new ServiceError(422, "invalid", "Please fix the highlighted problems before publishing.", { errors, warnings });
+  const flags = contentFlags(d).map((code) => ({ code }));
+  const t = now();
+  db.transaction(() => {
+    if (q.live_revision_id) db.prepare("UPDATE question_revision SET state='superseded' WHERE id = ?").run(q.live_revision_id);
+    db.prepare(
+      "UPDATE question_revision SET state='approved', review_status='unreviewed', reviewed_by=NULL, reviewed_at=NULL, submitted_at=?, attested_at=?, attestation_text=?, flags=? WHERE id=?",
+    ).run(t, t, ATTESTATION_TEXT, JSON.stringify(flags), r.id);
+    db.prepare("UPDATE question SET state='published', live_revision_id=?, topic_id=?, updated_at=? WHERE id=?").run(r.id, r.topic_id, t, qid);
+  })();
+  logEvent(actor.id, "published_without_review", { questionId: qid, revisionId: r.id, detail: { number: r.number } });
+  return { id: qid, state: "published", warnings };
 }
 
 export function withdrawOwn(actor: Actor, qid: string) {

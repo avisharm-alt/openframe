@@ -19,7 +19,7 @@ export default function Privacy() {
       <h2>Your data</h2>
       <ul>
         <li><b>Clear this device:</b> “Clear history on this device” on the Saved &amp; history page removes local history and deletes those guest sessions.</li>
-        <li><b>Delete your account:</b> from the Account page. This removes your sign-in, history, bookmarks, drafts and unpublished submissions. Published questions remain in the bank under the content license, detached from your account and without attribution. Reports you filed keep their text without your link.</li>
+        <li><b>Delete your account:</b> from the Account page. This removes your sign-in, history, bookmarks, drafts and unpublished submissions. Published questions remain in the bank under the content license, detached from your account and without attribution; you can delete any question you wrote from the Contribute page first, which permanently erases its text. Reports you filed keep their text without your link.</li>
         <li><b>Moderation records:</b> restricted audit events (what action, on which question, when) are kept for moderation. They hold no private reviewer notes or personal data beyond a reference to the acting moderator’s account, which is removed when that account is deleted.</li>
       </ul>
       <h2>Security</h2>

@@ -6,9 +6,9 @@ Everything here is done from a shell on the server (or via the moderation UI whe
 
 | Role | Can |
 |---|---|
-| student (default) | practise, bookmark, contribute, report |
+| student (default) | practise, bookmark, contribute, report, **permanently delete their own questions** |
 | reviewer | everything above + review others' submissions, handle reports, withdraw questions |
-| maintainer | everything a reviewer can + restore withdrawn questions, view the audit log |
+| maintainer | everything a reviewer can + restore withdrawn questions, view the audit log, **delete any question**, **publish their own questions without review** |
 
 Roles are granted **only** from the shell (no API, no UI), so nobody can escalate their own account:
 
@@ -17,7 +17,7 @@ npm run admin:grant -- someone@example.org reviewer
 npm run admin:grant -- someone@example.org student      # revoke
 ```
 
-Initial launch: the maintainer can review others' contributions. **Nobody can review their own submission, whatever their role**, so a maintainer's own questions need a second reviewer — grant the reviewer role to at least one other trusted student.
+Initial launch: the maintainer can review others' contributions. **Nobody can review their own submission, whatever their role.** A maintainer who wants to add content without waiting for a second person can use **Publish without review** in the question editor: it goes live at once, is labelled **Unreviewed** ("student-reviewed" means someone else checked it, which is not true here), still needs the originality statement, and is recorded in the audit log as `published_without_review`. Unreviewed questions are left out of practice by default (students tick "Include unreviewed"), so grant the reviewer role to at least one other trusted student if you want your own questions to become student-reviewed through the normal route.
 
 ## Accounts
 
@@ -58,7 +58,8 @@ Edits to a published question create a new revision that goes back through revie
 
 - **Guest sessions** are stored server-side under random ids. Purge old ones from cron: `npm run admin:purge-guests -- 30` (days).
 - **Account deletion** is self-service on `/account`. For a deletion request received out-of-band: `npm run admin:delete-user -- someone@example.org`. It removes sign-in, history, bookmarks, drafts and unpublished submissions; published questions remain, anonymised; reports lose the reporter link.
-- **Rejected or withdrawn content**: rows remain in the database for audit. To purge a specific question entirely, delete it with SQL (`DELETE FROM question WHERE id = ?` cascades to revisions, options, reviews, bookmarks) and record why in your own maintainer log. Do this deliberately; it removes the audit trail for that item.
+- **Withdrawn content** stays in the database (hidden, restorable) for audit.
+- **Deleting a question** is permanent and is done in the app, not with SQL: authors can delete their own from *Contribute*, and maintainers can delete any question from *Moderation → Questions* (a reason is required and goes to the audit log; the audit entry holds no question text). If nobody has practised the question, the row is removed outright. If students have practised it, practice sessions still point at it, so its text, options, explanations, review notes, bookmarks and author link are erased and an empty anonymous shell remains; those students see "no longer available" and it is excluded from their score, exactly like a withdrawn question. Do not `DELETE` such a question with SQL: the foreign keys from practice sessions will (correctly) refuse it.
 
 ## Backups and restoration
 

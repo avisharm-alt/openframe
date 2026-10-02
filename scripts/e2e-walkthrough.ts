@@ -188,6 +188,56 @@ async function main() {
   const js = await author.c.req("POST", "/api/contributions", { ...draft, referenceUrl: "javascript:alert(1)" });
   check("non-http(s) reference links are rejected", js.status === 422, String(js.status));
 
+  // --- deletion and maintainer publishing
+  const fresh = (stem: string) => {
+    const ids = Array.from({ length: 4 }, () => crypto.randomUUID());
+    return { ...draft, stem, options: (draft.options as any[]).map((o, i) => ({ ...o, id: ids[i] })), correctOptionId: ids[0] };
+  };
+  const maint = await signUp("maintainer");
+  grant(maint.id, "maintainer");
+  const mine1 = (await author.c.req("POST", "/api/contributions", fresh("Which keyword begins a conditional branch in Python code?"))).json.id as string;
+  const delOwn = await author.c.req("DELETE", `/api/contributions/${mine1}`);
+  check("author can permanently delete their own draft", delOwn.status === 200 && delOwn.json.outcome === "removed", JSON.stringify(delOwn.json));
+  check("deleted draft is gone", (await author.c.req("GET", `/api/contributions/${mine1}`)).status === 404);
+  const theirs = (await author.c.req("POST", "/api/contributions", fresh("Which statement repeats a block while a test remains true here?"))).json.id as string;
+  check("another user cannot delete someone else's question (404)", (await other.c.req("DELETE", `/api/contributions/${theirs}`)).status === 404);
+  check("...and it still exists", (await author.c.req("GET", `/api/contributions/${theirs}`)).status === 200);
+  check("a signed-out request cannot delete (401)", (await guest.req("DELETE", `/api/contributions/${theirs}`)).status === 401);
+  const crossDel = await fetch(BASE + `/api/contributions/${theirs}`, { method: "DELETE", headers: { Origin: "https://evil.example", Cookie: author.c.cookie } });
+  check("cross-origin delete is rejected", crossDel.status === 403, String(crossDel.status));
+  check("reviewers cannot use maintainer delete (403)", (await reviewer.c.req("DELETE", `/api/moderation/questions/${theirs}`, { reason: "not allowed here" })).status === 403);
+  check("students cannot use maintainer delete (403)", (await other.c.req("DELETE", `/api/moderation/questions/${theirs}`, { reason: "not allowed here" })).status === 403);
+  check("students cannot publish without review (403)", (await author.c.req("POST", `/api/contributions/${theirs}/publish`, { attested: true })).status === 403);
+  check("students cannot list all questions (403)", (await other.c.req("GET", "/api/moderation/questions")).status === 403);
+
+  const mq = (await maint.c.req("POST", "/api/contributions", fresh("Which Python construct selects between two paths using a test?"))).json.id as string;
+  check("publishing requires the attestation", (await maint.c.req("POST", `/api/contributions/${mq}/publish`, { attested: false })).status === 422);
+  check("maintainer cannot publish another person's draft (404)", (await maint.c.req("POST", `/api/contributions/${theirs}/publish`, { attested: true })).status === 404);
+  const pubNow = await maint.c.req("POST", `/api/contributions/${mq}/publish`, { attested: true });
+  check("maintainer can publish their own question without a second reviewer", pubNow.status === 200 && pubNow.json.state === "published", JSON.stringify(pubNow.json));
+  const mpub = await guest.req("GET", `/api/questions/${mq}`);
+  check("it is public but labelled unreviewed", mpub.status === 200 && mpub.json.reviewStatus === "unreviewed", JSON.stringify(mpub.json));
+
+  const all = (await maint.c.req("GET", "/api/moderation/questions")).json.questions as any[];
+  const asDraft = all.find((q) => q.id === theirs);
+  check("maintainer can see every question, but not other people's draft text", !!all.find((q) => q.id === mq) && asDraft?.stem === null);
+  check("maintainer delete needs a reason", (await maint.c.req("DELETE", `/api/moderation/questions/${theirs}`, { reason: "no" })).status === 422);
+  const delOther = await maint.c.req("DELETE", `/api/moderation/questions/${theirs}`, { reason: "Spam draft for the e2e check" });
+  check("maintainer can delete anyone's question", delOther.status === 200 && delOther.json.outcome === "removed", JSON.stringify(delOther.json));
+  check("...and the author no longer has it", (await author.c.req("GET", `/api/contributions/${theirs}`)).status === 404);
+  check("deleting twice is a 404", (await maint.c.req("DELETE", `/api/moderation/questions/${theirs}`, { reason: "Spam draft for the e2e check" })).status === 404);
+
+  const practised = await guest.req("POST", "/api/sessions", { courseId: detail.id, topicIds: [topic.id], count: 20, mode: "practice", includeUnreviewed: true });
+  const pItem = (practised.json.items as any[] | undefined)?.find((i) => i.question?.questionId === mq)
+    ?? ((await guest.req("GET", `/api/sessions/${practised.json.id}`)).json.items as any[]).find((i) => i.question?.questionId === mq);
+  check("a practised question appears in a session", !!pItem, JSON.stringify(practised.json).slice(0, 200));
+  const delPractised = await maint.c.req("DELETE", `/api/moderation/questions/${mq}`, { reason: "Removed after practice for e2e" });
+  check("deleting a practised question erases it but keeps others' history intact", delPractised.status === 200 && delPractised.json.outcome === "erased", JSON.stringify(delPractised.json));
+  const afterDel = ((await guest.req("GET", `/api/sessions/${practised.json.id}`)).json.items as any[]).find((i) => i.id === pItem?.id);
+  check("the practising student sees it as unavailable, with no content", afterDel?.status === "unavailable" && afterDel.question === null, JSON.stringify(afterDel));
+  check("deleted question is gone from the public API", (await guest.req("GET", `/api/questions/${mq}`)).status === 404);
+  check("maintainer cannot withdraw or restore a deleted question", (await maint.c.req("POST", `/api/moderation/questions/${mq}/withdraw`, { reason: "should not apply" })).status === 404 && (await maint.c.req("POST", `/api/moderation/questions/${mq}/restore`)).status === 409);
+
   // --- account deletion keeps published content anonymous
   const del = await other.c.req("DELETE", "/api/account", { confirm: "DELETE" });
   check("user can delete their account", del.status === 200);

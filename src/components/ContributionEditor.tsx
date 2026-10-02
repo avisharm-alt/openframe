@@ -5,6 +5,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { Markdown } from "./Markdown";
 import { QuestionMeta } from "./QuestionMeta";
 import { OptionList } from "./SessionPlayer";
+import { Dialog } from "./Dialog";
 import { ATTESTATION_TEXT } from "@/lib/attestation";
 import { STRUCTURAL_CHECK_NOTE } from "@/lib/copy";
 import type { SessionItem } from "@/lib/services/practice";
@@ -20,7 +21,7 @@ type Issue = { field: string; message: string };
 
 const newOpt = (): Opt => ({ id: crypto.randomUUID(), text: "", explanation: "" });
 
-export function ContributionEditor({ targets, initial }: { targets: Target[]; initial: null | { id: string; draft: Draft; revisionNumber: number; hasLive: boolean; requestedChanges: string | null } }) {
+export function ContributionEditor({ targets, initial, isMaintainer = false }: { targets: Target[]; initial: null | { id: string; draft: Draft; revisionNumber: number; hasLive: boolean; requestedChanges: string | null }; isMaintainer?: boolean }) {
   const router = useRouter();
   const d0 = initial?.draft;
   const [courseId, setCourseId] = useState(d0?.courseId ?? targets[0]?.id ?? "");
@@ -44,6 +45,7 @@ export function ContributionEditor({ targets, initial }: { targets: Target[]; in
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState(false);
+  const [dlg, setDlg] = useState<null | "delete" | "publish">(null);
 
   const course = targets.find((t) => t.id === courseId);
   const topics = useMemo(() => course?.topics ?? [], [course]);
@@ -93,6 +95,27 @@ export function ContributionEditor({ targets, initial }: { targets: Target[]; in
       router.push("/contribute");
       router.refresh();
     } catch (e) { showError(e); } finally { setBusy(false); }
+  }
+
+  /** Maintainers only: publish immediately, labelled Unreviewed. The server enforces the role. */
+  async function publishNow() {
+    setBusy(true);
+    try {
+      const id = await save();
+      if (!id) { setDlg(null); return; }
+      await api("POST", `/api/contributions/${id}/publish`, { attested: true });
+      router.push("/contribute");
+      router.refresh();
+    } catch (e) { setDlg(null); showError(e); } finally { setBusy(false); }
+  }
+  async function deleteDraft() {
+    if (!qid) return;
+    setBusy(true);
+    try {
+      await api("DELETE", `/api/contributions/${qid}`);
+      router.push("/contribute");
+      router.refresh();
+    } catch (e) { setDlg(null); showError(e); } finally { setBusy(false); }
   }
 
   const previewItem: SessionItem = useMemo(() => ({
@@ -202,9 +225,25 @@ export function ContributionEditor({ targets, initial }: { targets: Target[]; in
           <button className="btn secondary" disabled={busy}>Save draft</button>
           <button type="button" className="btn" disabled={busy || !attested} onClick={submit}>{busy ? "Submitting…" : "Submit for review"}</button>
           <button type="button" className="btn secondary" aria-pressed={preview} onClick={() => setPreview(!preview)}>{preview ? "Hide preview" : "Show preview"}</button>
+          {isMaintainer && <button type="button" className="btn secondary" disabled={busy || !attested} onClick={() => setDlg("publish")}>Publish without review</button>}
+          {qid && <button type="button" className="btn danger" disabled={busy} onClick={() => setDlg("delete")}>Delete</button>}
         </div>
-        <p className="small muted">Submitting sends this for review by another student. It is never published immediately.</p>
+        <p className="small muted">Submitting sends this for review by another student. It is never published immediately.{isMaintainer && " As a maintainer you can instead publish without review; it is then labelled Unreviewed and the audit log records that review was skipped."}</p>
       </form>
+
+      <Dialog open={dlg !== null} onClose={() => setDlg(null)} title={dlg === "publish" ? "Publish without review?" : "Delete this question?"}>
+        {dlg === "publish" ? (
+          <>
+            <p>This goes live immediately and is labelled <b>Unreviewed</b>, because no second person will have checked it. The action is recorded in the audit log.</p>
+            <div className="row"><button className="btn" disabled={busy} onClick={publishNow}>{busy ? "Publishing…" : "Publish now"}</button><button className="btn secondary" onClick={() => setDlg(null)}>Cancel</button></div>
+          </>
+        ) : (
+          <>
+            <p>This permanently deletes the question. Its text, options and explanations cannot be recovered. Students who already practised it will see it as no longer available.</p>
+            <div className="row"><button className="btn danger" disabled={busy} onClick={deleteDraft}>{busy ? "Deleting…" : "Delete permanently"}</button><button className="btn secondary" onClick={() => setDlg(null)}>Keep it</button></div>
+          </>
+        )}
+      </Dialog>
 
       <aside aria-label="Learner preview" style={{ display: preview || undefined ? "block" : undefined }} className={preview ? "" : "preview-hidden"}>
         {preview && (
@@ -224,6 +263,7 @@ export function ContributionStatus({ c }: { c: { id: string; state: string; revi
   const router = useRouter();
   const [err, setErr] = useState<string | null>(null);
   const [confirmW, setConfirmW] = useState(false);
+  const [confirmD, setConfirmD] = useState(false);
   const canRevise = (c.state === "changes_requested" || c.state === "published") && !["pending", "draft"].includes(c.revisionState);
   const canWithdraw = !["withdrawn", "rejected"].includes(c.state);
   return (
@@ -240,7 +280,15 @@ export function ContributionStatus({ c }: { c: { id: string; state: string; revi
       <div className="row">
         {canRevise && <button className="btn" onClick={async () => { try { await api("POST", `/api/contributions/${c.id}/revise`); router.refresh(); } catch (e) { setErr((e as Error).message); } }}>{c.state === "published" ? "Propose an edit" : "Edit and resubmit"}</button>}
         {canWithdraw && <button className="btn secondary" onClick={() => setConfirmW(true)}>Withdraw</button>}
+        <button className="btn danger" onClick={() => setConfirmD(true)}>Delete</button>
       </div>
+      {confirmD && (
+        <div className="notice bad" role="alertdialog" aria-label="Confirm deletion">
+          <p>Permanently delete this question? Its text, options and explanations cannot be recovered. Students who already practised it will see it as no longer available. To hide it but keep it, use Withdraw instead.</p>
+          <button className="btn danger" onClick={async () => { try { await api("DELETE", `/api/contributions/${c.id}`); router.push("/contribute"); router.refresh(); } catch (e) { setErr((e as Error).message); setConfirmD(false); } }}>Yes, delete permanently</button>{" "}
+          <button className="btn secondary" onClick={() => setConfirmD(false)}>Cancel</button>
+        </div>
+      )}
       {confirmW && (
         <div className="notice bad" role="alertdialog" aria-label="Confirm withdrawal">
           <p>Withdraw this contribution? It will be removed from learners’ sessions.</p>

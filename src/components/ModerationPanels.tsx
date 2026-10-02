@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { CHECKLIST_LABELS, REVIEW_CHECKLIST } from "@/lib/types";
 import { STRUCTURAL_CHECK_NOTE, STUDENT_REVIEWED_EXPLAINER } from "@/lib/copy";
+import { Dialog } from "./Dialog";
 
 export function ReviewPanel({ revisionId, questionId }: { revisionId: string; questionId: string }) {
   const router = useRouter();
@@ -102,6 +103,71 @@ export function ReportsPanel() {
           </article>
         ))
       )}
+    </div>
+  );
+}
+
+type QuestionRow = { id: string; state: string; courseCode: string; topic: string; stem: string | null; authorName: string | null; reviewStatus: string | null; updatedAt: string };
+
+/** Maintainers only: find any question and delete it permanently (with a reason that goes to the audit log). */
+export function QuestionsPanel() {
+  const [rows, setRows] = useState<QuestionRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState("");
+  const [target, setTarget] = useState<QuestionRow | null>(null);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(async () => {
+    try { setRows((await api<{ questions: QuestionRow[] }>("GET", "/api/moderation/questions")).questions); } catch (e) { setError((e as Error).message); }
+  }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount
+  useEffect(() => { load(); }, [load]);
+
+  const shown = (rows ?? []).filter((r) => `${r.courseCode} ${r.topic} ${r.stem ?? ""} ${r.authorName ?? ""} ${r.state}`.toLowerCase().includes(filter.trim().toLowerCase()));
+  const close = () => { setTarget(null); setReason(""); };
+  async function remove() {
+    if (!target) return;
+    setBusy(true); setError(null);
+    try { await api("DELETE", `/api/moderation/questions/${target.id}`, { reason }); close(); await load(); } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
+  return (
+    <div>
+      <label htmlFor="qf">Filter questions <span className="help">Matches course, topic, text, author or status. Showing the 300 most recently changed. Drafts are private, so their text is not shown.</span></label>
+      <input id="qf" type="search" value={filter} onChange={(e) => setFilter(e.target.value)} autoComplete="off" />
+      {error && <p role="alert" className="field-error">{error}</p>}
+      {rows === null ? <p role="status">Loading…</p> : shown.length === 0 ? <p className="muted">No questions match.</p> : (
+        <div className="table-wrap" tabIndex={0} role="region" aria-label="Questions (scrollable)">
+          <table>
+            <caption className="sr-only">All questions</caption>
+            <thead><tr><th scope="col">Updated</th><th scope="col">Question</th><th scope="col">Course / topic</th><th scope="col">Author</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
+            <tbody>
+              {shown.map((r) => {
+                const plain = (r.stem ?? "").replace(/```[a-z]*/gi, " ").replace(/`/g, "").replace(/\s+/g, " ").trim();
+                const label = r.stem ? (plain.length > 80 ? plain.slice(0, 80) + "…" : plain) : "(private draft)";
+                return (
+                  <tr key={r.id}>
+                    <td className="nowrap">{r.updatedAt.slice(0, 10)}</td>
+                    <td>{r.stem ? label : <i>{label}</i>}</td>
+                    <td>{r.courseCode} · {r.topic}</td>
+                    <td>{r.authorName ?? "—"}</td>
+                    <td><span className="badge">{r.state.replace("_", " ")}</span>{r.reviewStatus === "student_reviewed" && <span className="badge ok">reviewed</span>}</td>
+                    <td><button className="btn small danger" onClick={() => setTarget(r)} aria-label={`Delete question: ${label}`}>Delete</button></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <Dialog open={target !== null} onClose={close} title="Delete this question permanently?">
+        <p>The text, options and explanations are erased and cannot be recovered. Students who already practised it will see it as no longer available. To hide it reversibly, withdraw it instead.</p>
+        <label htmlFor="del-reason">Reason <span className="help">Required. Kept in the audit log; do not paste the question text.</span></label>
+        <textarea id="del-reason" style={{ minHeight: "4rem" }} value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />
+        <div className="row" style={{ marginTop: "1rem" }}>
+          <button className="btn danger" disabled={busy || reason.trim().length < 5} onClick={remove}>{busy ? "Deleting…" : "Delete permanently"}</button>
+          <button className="btn secondary" onClick={close}>Cancel</button>
+        </div>
+      </Dialog>
     </div>
   );
 }
