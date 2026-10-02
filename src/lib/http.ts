@@ -75,6 +75,7 @@ function build<P, A extends Actor | null>(level: Level, opts: Opts, fn: (ctx: Ct
       }
       const params = await c.params;
       const result = await fn({ req, actor: actor as A, params, body });
+      if (result instanceof Response) return result; // raw responses (file downloads) are returned untouched
       return NextResponse.json(result ?? { ok: true }, { headers: { "Cache-Control": "no-store" } });
     } catch (e) {
       return errorResponse(e);

@@ -18,6 +18,7 @@ OpenFrame is independent and is **not affiliated with or endorsed by Western Uni
 | Accounts, saved history, bookmarks (private) | `/saved`, `/account` |
 | Guided contribution editor with learner preview, drafts, revisions | `/contribute` |
 | Delete your own questions; maintainers can delete any question and publish their own without review (labelled Unreviewed) | `/contribute`, `/moderation?tab=questions` |
+| Share study notes privately (any document, image or text; consent for AI use; never published; auto-deleted after 180 days); maintainers read them and download files | `/contribute/notes`, `/moderation?tab=notes` |
 | Reports (anyone, rate limited) and content-removal route | question "Report a problem", `/content-removal` |
 | Moderation: queue, checklist review, reports, course requests, audit log, withdrawal | `/moderation` |
 | Policies: About, Guidelines, Academic integrity, Privacy, Content removal | footer links |
@@ -31,7 +32,7 @@ OpenFrame is independent and is **not affiliated with or endorsed by Western Uni
 - **Vitest** for tests; **Playwright (Chromium) + axe-core** for the browser/accessibility check.
 - Dependencies are pinned to exact versions in `package.json`.
 
-No external service or API key is required. No AI API is used or required: contributors generate questions with their own tools and submit structured text.
+No external service or API key is required. No AI API is used or required: contributors generate questions with their own tools and submit structured text. Students can also privately share study notes (files or text); maintainers may use them, with the sender's consent, to write questions.
 
 ## Quick start (local demo)
 
@@ -100,7 +101,8 @@ No separate database server (and no MongoDB) is needed: data lives in one SQLite
 migrations/            plain SQL (001 = Better Auth schema, regenerate with npm run db:gen-auth-sql; 002 = app schema)
 src/lib/services/      all business rules (catalog, practice, contributions, moderation, reports, account) — framework-free, unit tested
 src/lib/http.ts        route wrapper: request guard, auth level, JSON parsing, error mapping
-src/lib/guard.ts       rejects uploads / non-JSON bodies / oversized / cross-origin writes (also run from src/proxy.ts)
+src/lib/guard.ts       rejects uploads / non-JSON bodies / oversized / cross-origin writes, except the one capped upload route for notes (also run from src/proxy.ts)
+src/lib/note-files.ts  what an uploaded note file may be (blocks programs and browser-runnable files by extension and signature)
 src/app/api/           thin route handlers
 src/app, src/components  UI
 scripts/               migrate, seed-demo, backup, grant-role, delete-user, purge-guest-sessions, e2e + browser checks

@@ -22,7 +22,7 @@ export default function Guidelines() {
       <h2>Rules</h2>
       <ul>
         <li>No professor-created exams, quizzes, tests, answer keys, screenshots, scans, copied or reconstructed questions. See <Link href="/academic-integrity">academic integrity</Link>.</li>
-        <li>No file uploads. Submit structured text only. Markdown and LaTeX are supported; HTML, scripts and images are not.</li>
+        <li>Questions are structured text only: no file uploads. Markdown and LaTeX are supported; HTML, scripts and images are not. If you have notes rather than questions, send them privately through <Link href="/contribute/notes">Share your notes</Link>.</li>
         <li>You must confirm the originality and permission statement on every submission.</li>
         <li>Course association does not give you permission to reproduce lecture slides, textbook questions, or other protected material.</li>
       </ul>

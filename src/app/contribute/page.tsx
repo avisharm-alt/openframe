@@ -21,13 +21,14 @@ export default async function Contribute() {
       <p>
         Questions must be <b>original</b> practice content with an answer and explanations you have checked. They are reviewed by another student before they are
         published. Read the <Link href="/guidelines">contribution guidelines</Link> and <Link href="/academic-integrity">academic integrity rules</Link> first.
-        Never submit questions from real exams, quizzes or tests, and never upload files — the form accepts structured text only.
+        Never submit questions from real exams, quizzes or tests, and never upload files — the question form accepts structured text only.
       </p>
       {!actor ? (
         <div className="notice" role="note"><Link href="/auth/sign-in">Sign in</Link> to draft and submit questions.</div>
       ) : (
         <>
-          <p><Link className="btn" href="/contribute/new">Write a new question</Link></p>
+          <p className="row"><Link className="btn" href="/contribute/new">Write a new question</Link><Link className="btn secondary" href="/contribute/notes">Share your notes</Link></p>
+          <p className="small muted">Prefer to share notes instead? They stay private, are never published, and volunteers may use them to write questions.</p>
           <h2>Your contributions</h2>
           <Mine actorId={actor.id} />
         </>

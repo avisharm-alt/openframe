@@ -20,6 +20,8 @@ const csp = [
 const nextConfig: NextConfig = {
   serverExternalPackages: ["better-sqlite3"],
   poweredByHeader: false,
+  // Request bodies are buffered when a proxy file exists; allow the notes upload route (see UPLOAD_ROUTES in src/lib/guard.ts).
+  experimental: { proxyClientMaxBodySize: "50mb" },
   async headers() {
     return [
       {
@@ -31,6 +33,12 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "same-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         ],
+      },
+      {
+        // Downloads of student-uploaded files (maintainers only): inert and sandboxed, never rendered as part of the site.
+        // Listed after the rule above so this stricter policy replaces the site-wide one for these URLs only.
+        source: "/api/moderation/notes/:id/files/:fileId",
+        headers: [{ key: "Content-Security-Policy", value: "sandbox; default-src 'none'" }],
       },
     ];
   },

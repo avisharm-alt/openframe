@@ -238,6 +238,77 @@ async function main() {
   check("deleted question is gone from the public API", (await guest.req("GET", `/api/questions/${mq}`)).status === 404);
   check("maintainer cannot withdraw or restore a deleted question", (await maint.c.req("POST", `/api/moderation/questions/${mq}/withdraw`, { reason: "should not apply" })).status === 404 && (await maint.c.req("POST", `/api/moderation/questions/${mq}/restore`)).status === 409);
 
+  // --- private notes
+  const noteBody = {
+    courseId: detail.id, title: "Week 3: recursion", ownWork: true, aiConsent: true,
+    text: "Distinctive notes sentence about accumulators. " + "Recursion replaces a loop with a function that calls itself on a smaller input. ".repeat(4),
+  };
+  check("signed-out users cannot send notes (401)", (await guest.req("POST", "/api/notes", noteBody)).status === 401);
+  check("notes need the own-work confirmation", (await author.c.req("POST", "/api/notes", { ...noteBody, ownWork: false })).status === 422);
+  check("notes need the AI-use consent", (await author.c.req("POST", "/api/notes", { ...noteBody, aiConsent: false })).status === 422);
+  const withEmail = await author.c.req("POST", "/api/notes", { ...noteBody, text: noteBody.text + " Contact me at someone@example.com" });
+  check("notes containing an email address are refused", withEmail.status === 422 && withEmail.json.error?.code === "personal_info", JSON.stringify(withEmail.json));
+  const mkForm = (fields: Record<string, string>, files: { name: string; bytes: Uint8Array }[] = [], extra: Record<string, string> = {}) => {
+    const fd = new FormData();
+    for (const [k, v] of Object.entries({ courseId: detail.id, title: "Uploaded notes", ownWork: "true", aiConsent: "true", text: "", ...fields, ...extra })) fd.append(k, v);
+    for (const f of files) fd.append("files", new Blob([f.bytes as BlobPart]), f.name);
+    return fd;
+  };
+  const postForm = (who: Client, fd: FormData, origin = BASE) => fetch(BASE + "/api/notes", { method: "POST", headers: { Origin: origin, Cookie: who.cookie }, body: fd });
+  const pdfBytes = new TextEncoder().encode("%PDF-1.4 distinctive uploaded file content ".repeat(20));
+  const stray = await postForm(author.c, mkForm({}, [{ name: "n.pdf", bytes: pdfBytes }], { surprise: "x" }));
+  check("unexpected fields in an upload are refused", stray.status === 422, String(stray.status));
+  const reportsUpload = await fetch(BASE + "/api/reports", { method: "POST", headers: { Origin: BASE, Cookie: author.c.cookie }, body: mkForm({}, [{ name: "n.pdf", bytes: pdfBytes }]) });
+  check("file uploads are still rejected on every other endpoint (415)", reportsUpload.status === 415, String(reportsUpload.status));
+  const exe = await postForm(author.c, mkForm({}, [{ name: "setup.exe", bytes: new TextEncoder().encode("MZ not really") }]));
+  check("programs are refused", exe.status === 422 && /not accepted/i.test(JSON.stringify(await exe.json())), String(exe.status));
+  const disguised = new Uint8Array(0x100); disguised.set([0x4d, 0x5a]); disguised[0x3c] = 0x80; disguised.set([0x50, 0x45, 0, 0], 0x80);
+  const renamed = await postForm(author.c, mkForm({}, [{ name: "lecture.pdf", bytes: disguised }]));
+  check("a program renamed to .pdf is refused", renamed.status === 422, String(renamed.status));
+  const tooBig = await postForm(author.c, mkForm({}, [{ name: "huge.pdf", bytes: new Uint8Array(16 * 1024 * 1024).fill(65) }]));
+  check("a file over 15 MB is refused with a clear message", tooBig.status === 422 && /15 MB/.test(JSON.stringify(await tooBig.json())), String(tooBig.status));
+  const wayTooBig = await postForm(author.c, mkForm({}, [{ name: "enormous.bin.pdf", bytes: new Uint8Array(48 * 1024 * 1024).fill(65) }]));
+  check("an upload over the request cap is refused before it is read (413)", wayTooBig.status === 413, String(wayTooBig.status));
+  const noteXo = await fetch(BASE + "/api/notes", { method: "POST", headers: { Origin: "https://evil.example", "Content-Type": "application/json", Cookie: author.c.cookie }, body: JSON.stringify(noteBody) });
+  check("cross-origin note submission is rejected", noteXo.status === 403, String(noteXo.status));
+  const sentNote = await author.c.req("POST", "/api/notes", noteBody);
+  check("a student can send notes privately", sentNote.status === 200 && !!sentNote.json.id && !!sentNote.json.expiresAt, JSON.stringify(sentNote.json));
+  const noteId = sentNote.json.id as string;
+  const myNotes = (await author.c.req("GET", "/api/notes")).json.notes as any[];
+  check("the author sees their note's status but never its text", myNotes.some((n) => n.id === noteId && n.status === "new") && !JSON.stringify(myNotes).includes("Distinctive notes sentence"));
+  check("another student cannot see or delete it", !(((await other.c.req("GET", "/api/notes")).json.notes as any[]).some((n) => n.id === noteId)) && (await other.c.req("DELETE", `/api/notes/${noteId}`)).status === 404);
+  check("reviewers cannot read shared notes (403)", (await reviewer.c.req("GET", "/api/moderation/notes")).status === 403 && (await reviewer.c.req("GET", `/api/moderation/notes/${noteId}`)).status === 403);
+  check("students cannot read shared notes (403)", (await other.c.req("GET", "/api/moderation/notes")).status === 403);
+  const notesList = (await maint.c.req("GET", "/api/moderation/notes")).json.notes as any[];
+  check("a maintainer sees the note with the sender's display name", notesList.some((n) => n.id === noteId && typeof n.authorName === "string" && n.authorName.length > 0), JSON.stringify(notesList));
+  const noteFull = await maint.c.req("GET", `/api/moderation/notes/${noteId}`);
+  check("a maintainer can open the full text", noteFull.status === 200 && String(noteFull.json.text).includes("Distinctive notes sentence"));
+  check("a maintainer can mark it used", (await maint.c.req("PATCH", `/api/moderation/notes/${noteId}`, { status: "used" })).status === 200 && ((await author.c.req("GET", "/api/notes")).json.notes as any[]).find((n) => n.id === noteId)?.status === "used");
+  const noteEvents = (await maint.c.req("GET", "/api/moderation/events")).json.events as any[];
+  check("opening a note is audit-logged without its text", noteEvents.some((e) => e.action === "note_opened") && !JSON.stringify(noteEvents).includes("Distinctive notes sentence"));
+  const bigBytes = new Uint8Array(12 * 1024 * 1024).map((_, i) => i % 251);
+  const withFiles = await postForm(author.c, mkForm({ title: "Notes with files" }, [{ name: "Week 3 notes.pdf", bytes: pdfBytes }, { name: "scan.png", bytes: bigBytes }]));
+  const wf = (await withFiles.json()) as any;
+  check("a student can upload files, including a 12 MB one, through the real server", withFiles.status === 200 && !!wf.id, JSON.stringify(wf));
+  const mineWithFiles = ((await author.c.req("GET", "/api/notes")).json.notes as any[]).find((n) => n.id === wf.id);
+  check("the author sees file names and sizes only", mineWithFiles?.files?.length === 2 && Object.keys(mineWithFiles.files[0]).sort().join() === "name,size", JSON.stringify(mineWithFiles));
+  const filesFull = (await maint.c.req("GET", `/api/moderation/notes/${wf.id}`)).json as any;
+  check("a maintainer sees the files", filesFull.files?.length === 2 && filesFull.files[0].name === "Week 3 notes.pdf", JSON.stringify(filesFull.files));
+  const dl = await fetch(BASE + `/api/moderation/notes/${wf.id}/files/${filesFull.files[1].id}`, { headers: { Cookie: maint.c.cookie } });
+  const dlBytes = new Uint8Array(await dl.arrayBuffer());
+  check("a maintainer can download a file, byte for byte", dl.status === 200 && dlBytes.length === bigBytes.length && dlBytes.every((b, i) => b === bigBytes[i]));
+  check("downloads are forced attachments that can never run in the site's origin",
+    /^attachment;/.test(dl.headers.get("content-disposition") ?? "") && dl.headers.get("content-type") === "application/octet-stream" && dl.headers.get("x-content-type-options") === "nosniff" && /sandbox/.test(dl.headers.get("content-security-policy") ?? ""),
+    JSON.stringify([...dl.headers.entries()].filter(([k]) => /content-|x-content/.test(k))));
+  check("reviewers and students cannot download files (403)",
+    (await fetch(BASE + `/api/moderation/notes/${wf.id}/files/${filesFull.files[0].id}`, { headers: { Cookie: reviewer.c.cookie } })).status === 403 &&
+    (await fetch(BASE + `/api/moderation/notes/${wf.id}/files/${filesFull.files[0].id}`, { headers: { Cookie: other.c.cookie } })).status === 403);
+  check("signed-out requests cannot download files (401)", (await fetch(BASE + `/api/moderation/notes/${wf.id}/files/${filesFull.files[0].id}`)).status === 401);
+  const evAfter = (await maint.c.req("GET", "/api/moderation/events")).json.events as any[];
+  check("downloads are audit-logged", evAfter.some((e) => e.action === "note_file_downloaded"));
+  check("deleting a note with files works", (await author.c.req("DELETE", `/api/notes/${wf.id}`)).status === 200 && (await maint.c.req("GET", `/api/moderation/notes/${wf.id}`)).status === 404);
+  check("the author can delete their note", (await author.c.req("DELETE", `/api/notes/${noteId}`)).status === 200 && (await maint.c.req("GET", `/api/moderation/notes/${noteId}`)).status === 404);
+
   // --- account deletion keeps published content anonymous
   const del = await other.c.req("DELETE", "/api/account", { confirm: "DELETE" });
   check("user can delete their account", del.status === 200);

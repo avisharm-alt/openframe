@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { DIFFICULTIES, PROVENANCE } from "./types";
+import { NOTES_MAX_CHARS } from "./attestation";
 
 const uuid = z.string().uuid();
 const trimmed = (max: number) => z.string().trim().max(max);
@@ -99,8 +100,8 @@ export function structuralCheck(d: DraftInput): { errors: CheckIssue[]; warnings
 }
 
 /** Keyword flags for reviewers. Heuristic only: they do not guarantee detection of prohibited content. */
-export function contentFlags(d: DraftInput): string[] {
-  const text = [d.stem, d.learningObjective, d.contextTag, d.referenceText, ...d.options.map((o) => o.text)].join("\n").toLowerCase();
+export function textFlags(raw: string): string[] {
+  const text = raw.toLowerCase();
   const flags: string[] = [];
   if (/\b(midterm|mid-term|final exam|past exam|exam question|quiz \d|test \d|question \d+\s*[:.)]|assignment \d)\b/.test(text)) {
     flags.push("assessment_keywords");
@@ -108,6 +109,31 @@ export function contentFlags(d: DraftInput): string[] {
   if (/\b(prof(essor)?\.?\s+[a-z]+|dr\.\s+[a-z]+|instructor|lecturer)\b/.test(text)) flags.push("instructor_mention");
   return flags;
 }
+
+export function contentFlags(d: DraftInput): string[] {
+  return textFlags([d.stem, d.learningObjective, d.contextTag, d.referenceText, ...d.options.map((o) => o.text)].join("\n"));
+}
+
+/**
+ * Obvious personal details that must not be in shared notes: email addresses, phone numbers (digit groups separated by spaces,
+ * dots or dashes, so long numbers in maths notes are not caught) and "student number: 123456789" style labels. Heuristic: it cannot
+ * find names, so the form also asks people not to include them.
+ */
+export function personalInfoProblems(text: string): ("email" | "phone" | "student_number")[] {
+  const found: ("email" | "phone" | "student_number")[] = [];
+  if (/[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}/i.test(text)) found.push("email");
+  if (/(?<!\d)(\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}(?!\d)/.test(text)) found.push("phone");
+  if (/\b(student|stu)\.?\s*(number|no\.?|num|id|#)\s*[:#-]?\s*\d{6,}/i.test(text)) found.push("student_number");
+  return found;
+}
+
+export const noteSchema = z.strictObject({
+  courseId: uuid,
+  title: z.string().trim().min(3, "Give the notes a short title.").max(120),
+  text: z.string().trim().max(NOTES_MAX_CHARS, `Pasted notes can be at most ${NOTES_MAX_CHARS.toLocaleString("en-CA")} characters. Please split them, or attach a file.`).default(""),
+  ownWork: z.literal(true, { error: "You must confirm these are your own notes." }),
+  aiConsent: z.literal(true, { error: "You must agree to the use of your notes to write questions." }),
+});
 
 const shingles = (s: string) => {
   const w = norm(s).split(" ").filter(Boolean);

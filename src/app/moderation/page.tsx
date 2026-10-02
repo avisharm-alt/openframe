@@ -2,7 +2,7 @@ import Link from "next/link";
 import { currentActor } from "@/lib/session";
 import { isMaintainer, isReviewer } from "@/lib/types";
 import { listCourseRequests, listEvents, queue } from "@/lib/services/moderation";
-import { QuestionsPanel, ReportsPanel } from "@/components/ModerationPanels";
+import { NotesPanel, QuestionsPanel, ReportsPanel } from "@/components/ModerationPanels";
 
 export const metadata = { title: "Moderation" };
 
@@ -13,7 +13,7 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
     return <div className="notice bad" role="alert"><b>Permission denied.</b> The moderation area is only for reviewers and maintainers. Roles are granted by a maintainer.</div>;
   }
   const tab = (await searchParams).tab ?? "submissions";
-  const tabs = [["submissions", "Submissions"], ["reports", "Reports"], ["requests", "Course requests"], ...(isMaintainer(actor) ? [["questions", "Questions"], ["events", "Audit log"]] : [])];
+  const tabs = [["submissions", "Submissions"], ["reports", "Reports"], ["requests", "Course requests"], ...(isMaintainer(actor) ? [["notes", "Notes"], ["questions", "Questions"], ["events", "Audit log"]] : [])];
   return (
     <>
       <h1>Moderation</h1>
@@ -24,6 +24,7 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
       {tab === "submissions" && <Submissions actorId={actor.id} role={actor.role} />}
       {tab === "reports" && <ReportsPanel />}
       {tab === "requests" && <Requests />}
+      {tab === "notes" && isMaintainer(actor) && <NotesPanel />}
       {tab === "questions" && isMaintainer(actor) && <QuestionsPanel />}
       {tab === "events" && isMaintainer(actor) && <Events />}
     </>

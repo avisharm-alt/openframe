@@ -7,7 +7,7 @@ There are two kinds of contribution: **code** (this file) and **questions** (thr
 1. `npm ci`, then `npm run check` must pass before you open a PR. For changes touching auth, practice, moderation or the API also run `npm run e2e`.
 2. Business rules live in `src/lib/services/*` and need a test in `tests/`. Route handlers stay thin and must use `publicRoute` / `userRoute` / `reviewerRoute` from `src/lib/http.ts` so the request guard and server-side authorisation always apply.
 3. Never deliver question data without checking publication state (`PUBLISHED` fragment in `catalog.ts`). Never return the answer key or explanations from a self-test session before it is finished.
-4. Keep uploads impossible: no multipart/file handling, structured JSON text only.
+4. Keep uploads impossible everywhere except the one explicit route: no multipart/file handling outside `POST /api/notes` (see `UPLOAD_ROUTES` in `src/lib/guard.ts`). A new upload route needs a threat-model note in `docs/IMPLEMENTATION.md`, size caps, a guard test, and files stored outside the database and never served inline.
 5. New UI needs labelled controls, visible focus, keyboard support and state that does not rely on colour alone.
 6. Pin new dependencies to exact versions and run `npm audit`.
 7. Do not commit real user data, `.db` files, or rejected/prohibited submissions.

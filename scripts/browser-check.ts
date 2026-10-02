@@ -120,6 +120,10 @@ async function authedPages() {
   await page.getByRole("button", { name: "Show preview" }).click();
   await axe(page, "contribution editor");
   await shot(page, "editor");
+  await page.goto(BASE + "/contribute/notes");
+  await page.getByRole("heading", { name: "Share your notes" }).waitFor();
+  await axe(page, "share notes form");
+  await shot(page, "notes");
   await browser.close();
 }
 

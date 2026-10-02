@@ -1,3 +1,4 @@
+import path from "node:path";
 // Central environment configuration. Nothing here requires external credentials.
 const bool = (v: string | undefined) => v === "1" || v === "true";
 const num = (v: string | undefined, d: number) => {
@@ -61,6 +62,14 @@ export const config = {
       .split(",")
       .map((e) => e.trim().toLowerCase())
       .filter(Boolean);
+  },
+  /** Where shared-note files are stored: a directory next to the database (so on the same volume), kept out of database backups. */
+  get notesDir() {
+    return process.env.NOTES_DIR || path.join(path.dirname(this.databasePath), "notes");
+  },
+  /** Hard cap on all stored note files together, so uploads can never fill the volume that holds the database. */
+  get notesMaxTotalBytes() {
+    return num(process.env.NOTES_MAX_TOTAL_MB, 1500) * 1024 * 1024;
   },
   get signupLimitPerHour() {
     return num(process.env.AUTH_SIGNUP_LIMIT_PER_HOUR, 10);

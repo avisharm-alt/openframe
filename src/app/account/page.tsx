@@ -22,7 +22,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
       <DisplayNameForm initial={actor.name ?? ""} />
       <h2>Delete account</h2>
       <p>
-        Deleting your account removes your sign-in, bookmarks, practice history, drafts and unpublished submissions. Questions that were already accepted and published
+        Deleting your account removes your sign-in, bookmarks, practice history, drafts, unpublished submissions, and any notes you shared (including their files). Questions that were already accepted and published
         stay in the bank under the content license, but are detached from your account and shown without attribution. To remove a published question yourself, delete it from the Contribute page before deleting your account. Reports you filed keep their text but lose the link to you.
         To also remove OpenFrame’s access from Google’s side, visit your Google Account’s “Third-party access” page.
       </p>

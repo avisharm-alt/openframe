@@ -171,3 +171,112 @@ export function QuestionsPanel() {
     </div>
   );
 }
+
+type NoteRow = { id: string; title: string; courseCode: string; authorName: string | null; status: string; createdAt: string; expiresAt: string; chars: number; flags: string[]; fileCount: number };
+type NoteFull = Omit<NoteRow, "fileCount"> & { text: string; courseTitle: string; consentVersion: string; consentedAt: string; files: { id: string; name: string; size: number }[] };
+const FLAG_LABEL: Record<string, string> = { assessment_keywords: "Exam-like wording", instructor_mention: "Mentions an instructor" };
+
+/**
+ * Maintainers only: private notes students have shared. Opening one is recorded in the audit log. The text is shown in a
+ * read-only box (never rendered as Markdown or HTML) so it can be copied into whatever tool is used to draft questions.
+ */
+export function NotesPanel() {
+  const [rows, setRows] = useState<NoteRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState<NoteFull | null>(null);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(async () => {
+    try { setRows((await api<{ notes: NoteRow[] }>("GET", "/api/moderation/notes")).notes); } catch (e) { setError((e as Error).message); }
+  }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount
+  useEffect(() => { load(); }, [load]);
+
+  const close = () => { setOpen(null); setConfirmDel(false); setCopied(false); };
+  async function openNote(id: string) {
+    setError(null);
+    try { setOpen(await api<NoteFull>("GET", `/api/moderation/notes/${id}`)); } catch (e) { setError((e as Error).message); }
+  }
+  async function setStatus(status: string) {
+    if (!open) return;
+    setBusy(true);
+    try { await api("PATCH", `/api/moderation/notes/${open.id}`, { status }); setOpen({ ...open, status }); await load(); } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
+  async function remove() {
+    if (!open) return;
+    setBusy(true);
+    try { await api("DELETE", `/api/moderation/notes/${open.id}`); close(); await load(); } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
+  async function copy() {
+    if (!open) return;
+    try { await navigator.clipboard.writeText(open.text); setCopied(true); } catch { setError("Could not copy automatically. Select the text and copy it."); }
+  }
+  return (
+    <div>
+      <p className="small muted">Notes shared privately by students. They are never shown to anyone else and are deleted automatically after the retention period. Opening a note is recorded in the audit log.</p>
+      {error && <p role="alert" className="field-error">{error}</p>}
+      {rows === null ? <p role="status">Loading…</p> : rows.length === 0 ? <p className="muted">No notes have been shared.</p> : (
+        <div className="table-wrap" tabIndex={0} role="region" aria-label="Notes (scrollable)">
+          <table>
+            <caption className="sr-only">Shared notes</caption>
+            <thead><tr><th scope="col">Received</th><th scope="col">Title</th><th scope="col">Course</th><th scope="col">From</th><th scope="col">Contents</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Open</span></th></tr></thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <td className="nowrap">{r.createdAt.slice(0, 10)}</td>
+                  <td>{r.title}{r.flags.map((f) => <span key={f} className="badge demo" style={{ marginLeft: "0.4rem" }}>{FLAG_LABEL[f] ?? f}</span>)}</td>
+                  <td>{r.courseCode}</td>
+                  <td>{r.authorName ?? "—"}</td>
+                  <td className="nowrap">{[r.fileCount ? `${r.fileCount} file${r.fileCount === 1 ? "" : "s"}` : "", r.chars ? `${r.chars.toLocaleString("en-CA")} chars` : ""].filter(Boolean).join(" + ")}</td>
+                  <td><span className="badge">{r.status}</span></td>
+                  <td><button className="btn small secondary" onClick={() => openNote(r.id)} aria-label={`Open notes: ${r.title}`}>Open</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <Dialog open={open !== null} onClose={close} title={open?.title ?? "Notes"}>
+        {open && (
+          <>
+            <p className="small muted">{open.courseCode} · {open.courseTitle} · from {open.authorName ?? "unknown"} · received {open.createdAt.slice(0, 10)} · consent {open.consentVersion}, {open.consentedAt.slice(0, 10)}</p>
+            {open.flags.length > 0 && <p className="notice warn" role="note">Check before using: {open.flags.map((f) => FLAG_LABEL[f] ?? f).join("; ")}. These are keyword hints only.</p>}
+            {open.files.length > 0 && (
+              <>
+                <h3>Files</h3>
+                <p className="notice warn small" role="note">Files are stored exactly as uploaded and are <b>not scanned</b>. Download them into a sandboxed viewer or straight into your AI tool, and do not open unfamiliar formats on a machine that holds anything sensitive. Each download is recorded in the audit log.</p>
+                <ul>
+                  {open.files.map((f) => (
+                    <li key={f.id}><a href={`/api/moderation/notes/${open.id}/files/${f.id}`} download>{f.name}</a> <span className="muted small">({f.size >= 1048576 ? `${(f.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(f.size / 1024))} KB`})</span></li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {open.text && (
+              <>
+                <label htmlFor="note-body">Pasted text</label>
+                <textarea id="note-body" readOnly value={open.text} style={{ minHeight: "12rem" }} />
+              </>
+            )}
+            <div className="row" style={{ marginTop: "0.8rem" }}>
+              {open.text && <button className="btn secondary" onClick={copy}>Copy text</button>}
+              <button className="btn secondary" disabled={busy || open.status === "used"} onClick={() => setStatus("used")}>Mark as used</button>
+              <button className="btn secondary" disabled={busy || open.status === "declined"} onClick={() => setStatus("declined")}>Decline</button>
+              <button className="btn danger" disabled={busy} onClick={() => setConfirmDel(true)}>Delete…</button>
+              <button className="btn secondary" onClick={close}>Close</button>
+            </div>
+            <p role="status" className="small muted">{copied ? "Copied to the clipboard." : `Status: ${open.status}.`}</p>
+            {confirmDel && (
+              <div className="notice bad" role="alertdialog" aria-label="Confirm deletion">
+                <p>Permanently delete these notes{open?.files.length ? " and their files" : ""}? This cannot be undone.</p>
+                <button className="btn danger" disabled={busy} onClick={remove}>Yes, delete permanently</button>{" "}
+                <button className="btn secondary" onClick={() => setConfirmDel(false)}>Cancel</button>
+              </div>
+            )}
+          </>
+        )}
+      </Dialog>
+    </div>
+  );
+}

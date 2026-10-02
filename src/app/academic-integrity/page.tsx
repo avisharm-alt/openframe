@@ -1,3 +1,4 @@
+import Link from "next/link";
 export const metadata = { title: "Academic integrity" };
 export default function Integrity() {
   return (
@@ -11,7 +12,7 @@ export default function Integrity() {
       </p>
       <h2>What this means in practice</h2>
       <ul>
-        <li>Uploads of any kind (PDF, documents, images) are disabled in the interface and rejected by the API.</li>
+        <li>Questions are submitted as structured text only. The one place files are accepted is <Link href="/contribute/notes">Share your notes</Link>: private study notes that are never published, can be read only by OpenFrame maintainers, and must be your own work, never exams, answer keys or course materials.</li>
         <li>Every submission is reviewed by a person before publication. Automatic keyword and duplicate checks may flag concerns for reviewers but cannot guarantee detection.</li>
         <li>Anyone can report a question as possibly containing assessment content. Such reports go to a priority queue for a moderator. One report never deletes content automatically; moderators withdraw content promptly when warranted.</li>
         <li>Withdrawn questions disappear from new sessions, search, bookmarks and public responses. If one is withdrawn during your session you will see an “unavailable” notice and it is excluded from your score.</li>

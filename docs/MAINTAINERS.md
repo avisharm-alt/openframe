@@ -8,7 +8,7 @@ Everything here is done from a shell on the server (or via the moderation UI whe
 |---|---|
 | student (default) | practise, bookmark, contribute, report, **permanently delete their own questions** |
 | reviewer | everything above + review others' submissions, handle reports, withdraw questions |
-| maintainer | everything a reviewer can + restore withdrawn questions, view the audit log, **delete any question**, **publish their own questions without review** |
+| maintainer | everything a reviewer can + restore withdrawn questions, view the audit log, **delete any question**, **publish their own questions without review**, **read shared notes and download their files** |
 
 Roles are granted **only** from the shell (no API, no UI), so nobody can escalate their own account:
 
@@ -50,6 +50,17 @@ Edits to a published question create a new revision that goes back through revie
 - Withdraw first, investigate second, when an item may be actual assessment content. Do not keep a copy of rejected/prohibited material outside the database and never commit it to the repository.
 - Configure the public contact for removal requests with `CONTENT_REMOVAL_CONTACT` (a URL or `mailto:`). **Never put an address there that does not exist.** Until configured, the page says so honestly.
 
+## Shared notes (`/moderation?tab=notes`, maintainers only)
+
+Students can privately send study notes (pasted text and/or files of any ordinary type). They are **never published or shown to anyone but the sender (title and status) and maintainers**, and are deleted automatically 180 days after they are sent, or sooner if the student or a maintainer deletes them or the account is deleted. Every send, open, download, status change and deletion is in the audit log (never with the note's content).
+
+- Each student ticked two statements, stored with the note: the notes are their own work (not instructor slides, textbook text, or anything from an assessment), and **maintainers may use them, including by putting them into third-party AI tools, to write questions.** Honour that wording: use consented notes only, do not copy them anywhere else, do not forward them, and check the terms of any AI tool you paste them into, because that tool may keep what it receives. The consent does not allow publishing the notes themselves.
+- Notes with exam-like wording or mentions of an instructor are flagged. Decline them. They are keyword hints only. If something looks like assessment content or someone else's material, decline and delete it.
+- The form blocks emails, phone numbers and "student number: …" in pasted text and in titles and file names, but **it cannot look inside files**, which can carry names, file properties or photo location data. Do not publish or paste any of that into a question.
+- **Files are not virus-scanned.** The app never opens or serves them except as forced, sandboxed downloads to maintainers. Open them in a sandboxed viewer or send them straight to your AI tool, and do not open unfamiliar formats on a machine holding anything sensitive. Programs, scripts and `.html`/`.svg` files are refused at upload.
+- Mark a note **used** once questions have been written from it, or **declined**. Questions you write go through the normal submission flow (and need a second reviewer, or *Publish without review* as a maintainer, which labels them Unreviewed).
+- **Storage:** files live in `NOTES_DIR` (default `notes/` beside the database file, so on the same volume) and **are not in `npm run db:backup`** by design, so a restored backup never brings deleted notes back. A volume-level snapshot from your host would include them until it is replaced. `NOTES_MAX_TOTAL_MB` (default 1500) is a hard cap on all stored files together; keep it well under the volume size so uploads can never fill the disk that holds the database.
+
 ## Audit log
 
 `/moderation?tab=events` (maintainers) lists submissions, reviews, withdrawals, restores, role grants, report handling and account deletions. Entries hold no private reviewer notes and no personal data beyond the acting account reference.
@@ -58,12 +69,13 @@ Edits to a published question create a new revision that goes back through revie
 
 - **Guest sessions** are stored server-side under random ids. Purge old ones from cron: `npm run admin:purge-guests -- 30` (days).
 - **Account deletion** is self-service on `/account`. For a deletion request received out-of-band: `npm run admin:delete-user -- someone@example.org`. It removes sign-in, history, bookmarks, drafts and unpublished submissions; published questions remain, anonymised; reports lose the reporter link.
+- **Shared notes** are deleted automatically 180 days after they are sent (checked before every note read or write, no cron job needed), when their author or a maintainer deletes them, and when the account is deleted. Their files are removed from disk at the same time, and a periodic sweep removes any file with no database record.
 - **Withdrawn content** stays in the database (hidden, restorable) for audit.
 - **Deleting a question** is permanent and is done in the app, not with SQL: authors can delete their own from *Contribute*, and maintainers can delete any question from *Moderation → Questions* (a reason is required and goes to the audit log; the audit entry holds no question text). If nobody has practised the question, the row is removed outright. If students have practised it, practice sessions still point at it, so its text, options, explanations, review notes, bookmarks and author link are erased and an empty anonymous shell remains; those students see "no longer available" and it is excluded from their score, exactly like a withdrawn question. Do not `DELETE` such a question with SQL: the foreign keys from practice sessions will (correctly) refuse it.
 
 ## Backups and restoration
 
-The whole site state is one SQLite file (plus `-wal`/`-shm` while running).
+The whole site state is one SQLite file (plus `-wal`/`-shm` while running). Uploaded note files are **not** included: they are private, short-lived, and kept out of backups on purpose.
 
 ```bash
 npm run db:backup                              # writes backups/openframe-YYYY-MM-DD.db (safe while the site is running)
@@ -88,3 +100,4 @@ Schedule it (cron/systemd timer) and copy backups off the machine. Backups conta
 - [ ] Real courses/topics inserted and verified. No demo data in production.
 - [ ] Backup + restore rehearsed. Guest-session purge scheduled.
 - [ ] Privacy page reviewed against what you actually run (analytics, logs, proxy logs).
+- [ ] If you accept shared notes: decide who may read them and which AI tools they may be pasted into (the consent only says "may be used with third-party AI tools"), and confirm `NOTES_MAX_TOTAL_MB` is well below the volume size.

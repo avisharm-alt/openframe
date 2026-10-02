@@ -1,7 +1,17 @@
 // Request guard applied to every /api request (via src/proxy.ts and again in apiHandler).
-// - Rejects file uploads (multipart or any non-JSON body) so the API only accepts structured text.
+// - Rejects file uploads (multipart or any non-JSON body) everywhere except the explicit UPLOAD_ROUTES below.
 // - Caps body size.
 // - Blocks cross-origin state-changing requests (CSRF defence in depth on top of SameSite=Lax cookies).
+
+import { NOTES_MAX_REQUEST_BYTES } from "./attestation";
+
+/**
+ * The only routes that accept a file upload (multipart/form-data), each with its own size cap (request headers plus files).
+ * Everything else still rejects every non-JSON body. Exact path and method match only.
+ */
+export const UPLOAD_ROUTES: { method: string; path: string; maxBytes: number }[] = [
+  { method: "POST", path: "/api/notes", maxBytes: NOTES_MAX_REQUEST_BYTES + 1_048_576 },
+];
 
 export type GuardResult = { status: number; code: string; message: string } | null;
 
@@ -15,14 +25,23 @@ export function guardRequest(req: Request, opts: { baseUrl: string; trustProxy: 
   const len = Number(h.get("content-length") || "0");
   const hasBody = len > 0 || h.has("transfer-encoding");
 
-  if (ct.startsWith("multipart/") || ct.startsWith("application/octet-stream") || /^(image|video|audio)\//.test(ct)) {
-    return { status: 415, code: "uploads_not_supported", message: "File uploads are not supported. Submit structured text only." };
-  }
-  if (hasBody && !ct.startsWith("application/json")) {
-    return { status: 415, code: "unsupported_media_type", message: "Only application/json request bodies are accepted." };
-  }
-  if (len > MAX_BODY_BYTES) {
-    return { status: 413, code: "too_large", message: "Request body is too large." };
+  let path = "";
+  try { path = new URL(req.url).pathname; } catch { /* leave empty: no route matches */ }
+  const upload = ct.startsWith("multipart/form-data") ? UPLOAD_ROUTES.find((r) => r.method === req.method && r.path === path) : undefined;
+  if (upload) {
+    // A declared length is required so the cap can be enforced before the body is read.
+    if (!len) return { status: 411, code: "length_required", message: "Uploads must declare their size." };
+    if (len > upload.maxBytes) return { status: 413, code: "too_large", message: "The upload is too large." };
+  } else {
+    if (ct.startsWith("multipart/") || ct.startsWith("application/octet-stream") || /^(image|video|audio)\//.test(ct)) {
+      return { status: 415, code: "uploads_not_supported", message: "File uploads are not supported here." };
+    }
+    if (hasBody && !ct.startsWith("application/json")) {
+      return { status: 415, code: "unsupported_media_type", message: "Only application/json request bodies are accepted." };
+    }
+    if (len > MAX_BODY_BYTES) {
+      return { status: 413, code: "too_large", message: "Request body is too large." };
+    }
   }
 
   const origin = h.get("origin");

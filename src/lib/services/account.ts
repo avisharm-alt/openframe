@@ -1,6 +1,7 @@
 import { getDb } from "../db";
 import { notFound } from "../errors";
 import { logEvent } from "./events";
+import { noteFileIdsForUser, unlinkNoteFiles } from "./notes";
 
 /**
  * Deletes an account and its private data.
@@ -13,6 +14,7 @@ export function deleteAccount(userId: string) {
   const db = getDb();
   const u = db.prepare('SELECT id FROM "user" WHERE id = ?').get(userId);
   if (!u) throw notFound("Account not found");
+  const noteFiles = noteFileIdsForUser(userId, db); // the database removes the rows with the account; the files are removed below
   db.transaction(() => {
     const own = db.prepare("SELECT id, state FROM question WHERE author_id = ?").all(userId) as { id: string; state: string }[];
     for (const q of own) {
@@ -25,6 +27,7 @@ export function deleteAccount(userId: string) {
     // Remaining FKs to "user" use ON DELETE SET NULL / CASCADE (sessions, bookmarks, auth sessions, accounts).
     db.prepare('DELETE FROM "user" WHERE id = ?').run(userId);
   })();
+  unlinkNoteFiles(noteFiles);
   logEvent(null, "account_deleted");
   return { deleted: true };
 }

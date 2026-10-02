@@ -27,6 +27,7 @@ Service → **Settings → Volumes → Add Volume**, mount path `/data`. Without
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | from Google Cloud Console |
 | `INITIAL_MAINTAINER_EMAILS` | your Google email, so you become maintainer on first sign-in |
 | `CONTENT_REMOVAL_CONTACT`, `SECURITY_CONTACT` | only real, monitored addresses or URLs (leave unset otherwise) |
+| `NOTES_MAX_TOTAL_MB` (optional) | cap on all uploaded note files together; default 1500. Files are stored in `/data/notes` on the same volume as the database, so keep this well below the volume size (5 GB volume: the default is fine). |
 
 Never set `OPENFRAME_DEMO` on a live site. Never put these values in the repository.
 
