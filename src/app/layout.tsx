@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import "@fontsource-variable/inter/wght.css";
-import "@fontsource-variable/newsreader/opsz.css";
+import "@fontsource-variable/inter/opsz.css";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 import { currentActor } from "@/lib/session";
@@ -61,11 +60,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </main>
         <footer className="site">
           <div className="wrap">
-            <div className="foot-brand"><BrandMark size={20} /><span>OpenFrame</span></div>
+            <div className="foot-about">
+            <div className="foot-brand"><BrandMark size={24} /><span>OpenFrame</span></div>
             <p>
               OpenFrame is a free, open-source, nonprofit-oriented student project (application code under the MIT license). No ads, no subscriptions, no sale of data.
               It is not a registered charity. Practice scores are not predictions of exam results.
             </p>
+            </div>
             <nav aria-label="Policies">
               <Link href="/about">About</Link>
               <Link href="/guidelines">Contribution guidelines</Link>

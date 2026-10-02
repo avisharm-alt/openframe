@@ -27,7 +27,7 @@ OpenFrame is independent and is **not affiliated with or endorsed by Western Uni
 - **SQLite** via `better-sqlite3` — real relational persistence, plain-SQL migrations in `migrations/`, zero-ops backups (a single file), cheap for volunteer maintainers. The schema is multi-university; only Western is enabled in the UI.
 - **Better Auth** — maintained email+password auth with cookie sessions and built-in rate limiting. The `role` column is server-controlled and cannot be set by clients.
 - **Zod** for server-side validation; **react-markdown + KaTeX** for safe Markdown/maths (raw HTML, images and iframes disabled).
-- **Design system** in `src/app/globals.css` (tokens for light and dark, serif display type over a sans UI face). Fonts (Newsreader, Inter) are self-hosted through `@fontsource-variable/*`, so there are no third-party requests and the CSP stays `'self'`.
+- **Design system** in `src/app/globals.css` (tokens for light and dark, navy/indigo palette, Inter throughout). The font is self-hosted through `@fontsource-variable/inter`, so there are no third-party requests and the CSP stays `'self'`.
 - **Vitest** for tests; **Playwright (Chromium) + axe-core** for the browser/accessibility check.
 - Dependencies are pinned to exact versions in `package.json`.
 

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { listCourses } from "@/lib/services/catalog";
 import { CourseRequestForm } from "@/components/CourseRequestForm";
-import { ArrowRightIcon, ArrowUpIcon, SearchIcon } from "@/components/Icons";
+import { ArrowRightIcon, SearchIcon } from "@/components/Icons";
+import { HeroVisual } from "@/components/HeroVisual";
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const q = ((await searchParams).q ?? "").trim().slice(0, 100);
@@ -10,14 +11,17 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
   return (
     <>
       <section className="hero">
-        <h1>Find practice questions for your course</h1>
-        <p className="lead">OpenFrame is a free, open-source, student-run question bank. Search by course code, title or topic. Every question has an explanation for each option, and you don’t need an account to practise.</p>
-        <form role="search" className="search" action="/" method="get">
-          <SearchIcon className="search-icon" />
-          <label htmlFor="q" className="sr-only">Search courses and topics</label>
-          <input id="q" name="q" type="search" defaultValue={q} placeholder="e.g. DEMO-102, statistics, recursion" autoComplete="off" />
-          <button className="search-go" aria-label="Search"><ArrowUpIcon /></button>
-        </form>
+        <div className="hero-copy">
+          <h1>Find <span className="grad">practice questions</span> for your course</h1>
+          <p className="lead">OpenFrame is a free, open-source, student-run question bank. Search by course code, title or topic. Every question has an explanation for each option, and you don’t need an account to practise.</p>
+          <form role="search" className="search" action="/" method="get">
+            <SearchIcon className="search-icon" />
+            <label htmlFor="q" className="sr-only">Search courses and topics</label>
+            <input id="q" name="q" type="search" defaultValue={q} placeholder="e.g. DEMO-102, statistics, recursion" autoComplete="off" />
+            <button className="search-go"><span className="go-label">Search</span><ArrowRightIcon size={16} /></button>
+          </form>
+        </div>
+        <HeroVisual />
       </section>
 
       {courses.length > 0 ? (
