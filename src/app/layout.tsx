@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import "@fontsource-variable/inter/opsz.css";
+import "@fontsource-variable/source-sans-3/wght.css";
+import "@fontsource-variable/source-serif-4/opsz.css";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 import { currentActor } from "@/lib/session";
@@ -8,7 +9,6 @@ import { config } from "@/lib/config";
 import { isReviewer } from "@/lib/types";
 import { SignOutButton } from "@/components/AuthForms";
 import { NavLink } from "@/components/NavLink";
-import { BrandMark } from "@/components/Icons";
 import { SITE_NOTICE } from "@/lib/copy";
 
 export const metadata: Metadata = {
@@ -33,7 +33,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </div>
         <header className="site">
           <div className="wrap">
-            <Link href="/" className="brand"><BrandMark /><span>OpenFrame</span></Link>
+            <Link href="/" className="brand">OpenFrame</Link>
             <nav className="main" aria-label="Main">
               <NavLink href="/" match={["/courses", "/practice"]}>Courses</NavLink>
               <NavLink href="/saved">Saved &amp; history</NavLink>
@@ -60,13 +60,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </main>
         <footer className="site">
           <div className="wrap">
-            <div className="foot-about">
-            <div className="foot-brand"><BrandMark size={24} /><span>OpenFrame</span></div>
             <p>
               OpenFrame is a free, open-source, nonprofit-oriented student project (application code under the MIT license). No ads, no subscriptions, no sale of data.
               It is not a registered charity. Practice scores are not predictions of exam results.
             </p>
-            </div>
             <nav aria-label="Policies">
               <Link href="/about">About</Link>
               <Link href="/guidelines">Contribution guidelines</Link>

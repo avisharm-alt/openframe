@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { listCourses } from "@/lib/services/catalog";
 import { CourseRequestForm } from "@/components/CourseRequestForm";
-import { ArrowRightIcon, SearchIcon } from "@/components/Icons";
-import { HeroVisual } from "@/components/HeroVisual";
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const q = ((await searchParams).q ?? "").trim().slice(0, 100);
@@ -12,16 +10,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
     <>
       <section className="hero">
         <div className="hero-copy">
-          <h1>Find <span className="grad">practice questions</span> for your course</h1>
+          <h1>Find practice questions for your course</h1>
           <p className="lead">OpenFrame is a free, open-source, student-run question bank. Search by course code, title or topic. Every question has an explanation for each option, and you don’t need an account to practise.</p>
           <form role="search" className="search" action="/" method="get">
-            <SearchIcon className="search-icon" />
             <label htmlFor="q" className="sr-only">Search courses and topics</label>
             <input id="q" name="q" type="search" defaultValue={q} placeholder="e.g. DEMO-102, statistics, recursion" autoComplete="off" />
-            <button className="search-go"><span className="go-label">Search</span><ArrowRightIcon size={16} /></button>
+            <button className="btn">Search</button>
           </form>
         </div>
-        <HeroVisual />
       </section>
 
       {courses.length > 0 ? (
@@ -40,7 +36,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
                   <b>{c.reviewedCount}</b> student-reviewed · <b>{c.unreviewedCount}</b> unreviewed
                   {c.topicMatches.length > 0 && <span className="muted"> · topic match: {c.topicMatches.join(", ")}</span>}
                 </p>
-                <Link className="btn small secondary go" href={`/practice/setup?course=${c.slug}`}>Start practice <ArrowRightIcon size={14} /></Link>
+                <Link className="btn small secondary go" href={`/practice/setup?course=${c.slug}`}>Start practice</Link>
               </li>
             ))}
           </ul>
