@@ -33,8 +33,8 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple
 a { color: var(--link); text-decoration: underline; text-underline-offset: 2px; }
 a:hover { text-decoration-thickness: 2px; }
 /* Links that are not part of running text need no underline. */
-.brand, nav.main a, header.site .row.small a, .btn, .tabs a, footer.site nav a, .listing .title a, .skip-link { text-decoration: none; }
-.brand:hover, nav.main a:hover, header.site .row.small a:hover, .btn:hover, .tabs a:hover, footer.site nav a:hover, .listing .title a:hover { text-decoration: underline; }
+.brand, nav.main a, header.site .row.small a, .btn, .tabs a, footer.site nav a, .listing .title a, .course-action, .skip-link { text-decoration: none; }
+.brand:hover, nav.main a:hover, header.site .row.small a:hover, .btn:hover, .tabs a:hover, footer.site nav a:hover, .listing .title a:hover, .course-action:hover { text-decoration: underline; }
 .btn:hover { text-decoration: none; }
 h1, h2, h3 { font-weight: 600; line-height: 1.25; margin: 1.5em 0 0.6em; }
 h1 { font-size: clamp(1.9rem, 3vw, 2.4rem); font-weight: 500; margin-top: 0.8em; letter-spacing: -0.025em; }
@@ -114,16 +114,28 @@ legend { font-weight: 600; padding: 0 0.4rem; }
 .hero { padding: 1.8rem 0 1.8rem; max-width: 48rem; }
 .hero h1 { margin: 0 0 0.55em; }
 .hero p { max-width: 42rem; }
-.search { display: flex; gap: 0.6rem; margin: 1.5rem 0 0; }
+.search { margin: 1.65rem 0 0; }
+.search-label { display: block; margin: 0 0 0.45rem; font-family: var(--mono); font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.search-controls { display: flex; gap: 0.6rem; }
 .search input { flex: 1; font-size: 1rem; padding: 0.55rem 0.8rem; }
 .search .btn { padding: 0.5rem 1.1rem; font-size: 0.95rem; }
 .course-section { border-top: 1px solid var(--border); padding-top: 1.5rem; }
 .course-section-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.25rem 1rem; }
 .course-section-heading h2, .course-section-heading p { margin: 0; }
+.course-section-heading p { font-family: var(--mono); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 .listing { list-style: none; padding: 0; margin: 1rem 0; border-top: 1px solid var(--border); }
-.listing > li { margin: 0; padding: 1.1rem 0; display: flex; gap: 0.7rem 1.2rem; flex-wrap: wrap; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
-.listing .title { font-weight: 600; font-size: 1.03rem; }
-.listing p { margin: 0.2rem 0 0; }
+.listing > li { margin: 0; padding: 1.15rem 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.8rem 1.5rem; align-items: center; border-bottom: 1px solid var(--border); }
+.course-details { min-width: 0; }
+.course-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.7rem; }
+.listing .title a { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 0.35rem 0.85rem; }
+.course-code { color: var(--muted); font-family: var(--mono); font-size: 0.77rem; font-weight: 600; letter-spacing: 0.025em; }
+.course-title { font-size: 1.04rem; font-weight: 600; }
+.listing p { margin: 0.22rem 0 0; }
+.course-meta span { color: var(--border-strong); padding: 0 0.15rem; }
+.course-counts { display: flex; flex-wrap: wrap; gap: 0.2rem 1rem; color: var(--muted); font-family: var(--mono); font-size: 0.73rem; font-variant-numeric: tabular-nums; }
+.course-counts b { color: var(--text); font-weight: 600; }
+.course-action { color: var(--link); font-size: 0.86rem; font-weight: 500; white-space: nowrap; }
+.course-action span { margin-left: 0.25rem; }
 
 .progress { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
 .progress > span { display: block; height: 100%; background: var(--primary); }
@@ -170,7 +182,8 @@ details > summary { cursor: pointer; font-weight: 600; }
 .two { display: grid; gap: 1.2rem; grid-template-columns: 1fr; }
 @media (min-width: 62rem) { .two { grid-template-columns: 1fr 1fr; } .wrap:has(.two) { max-width: 74rem; } }
 @media (max-width: 40rem) {
-  .search { flex-direction: column; }
+  .search-controls { flex-direction: column; }
+  .listing > li { grid-template-columns: 1fr; }
   header.site .wrap { gap: 0.3rem 1rem; }
   nav.main { order: 3; flex-basis: 100%; gap: 0.1rem 1rem; }
 }
