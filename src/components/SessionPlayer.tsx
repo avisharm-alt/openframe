@@ -136,7 +136,7 @@ export function SessionPlayer({ sessionId, signedIn, bookmarked }: { sessionId: 
   return (
     <div>
       <div className="row space">
-        <h1 style={{ margin: 0, fontSize: "1.4rem" }}>{selfTest ? "Self-test" : "Practice"}</h1>
+        <h1 style={{ margin: 0, fontSize: "1.4rem", border: "none", padding: 0 }}>{selfTest ? "Self-test" : "Practice"}</h1>
         {remaining !== null && <p role="timer" aria-live="off" className="badge" style={{ fontSize: "1rem" }}>Time left: {fmt(remaining)}</p>}
       </div>
       {data.requested > total && (

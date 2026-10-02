@@ -65,8 +65,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/content-removal">Content removal</Link>
             </nav>
             <p>
-              OpenFrame is a free, open-source, nonprofit-oriented student project. No ads, no subscriptions, no sale of data. It is not a registered charity.
-              Practice scores are not predictions of exam results.
+              OpenFrame is a free, open-source, nonprofit-oriented student project (application code under the MIT license). No ads, no subscriptions, no sale of data.
+              It is not a registered charity. Practice scores are not predictions of exam results.
             </p>
           </div>
         </footer>

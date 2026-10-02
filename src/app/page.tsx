@@ -9,8 +9,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
   return (
     <>
       <section className="hero">
-        <h1>What are you studying?</h1>
-        <p className="muted">Find student-written practice questions for your course, with an explanation for every option. Free, student-run, and no account needed.</p>
+        <h1>Find practice questions for your course</h1>
+        <p className="muted">OpenFrame is a free, open-source, student-run question bank. Search by course code, title or topic. Every question has an explanation for each option, and you don’t need an account to practise.</p>
         <form role="search" className="search" action="/" method="get">
           <label htmlFor="q" className="sr-only">Search courses and topics</label>
           <input id="q" name="q" type="search" defaultValue={q} placeholder="e.g. DEMO-102, statistics, recursion" autoComplete="off" />
@@ -22,22 +22,22 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
         <section aria-labelledby="results-h">
           <h2 id="results-h" className="sr-only">{q ? `Courses matching “${q}”` : "Courses"}</h2>
           <p className="muted small" role="status">{q ? `${courses.length} course${courses.length === 1 ? "" : "s"} match “${q}”.` : `${courses.length} course${courses.length === 1 ? "" : "s"} available.`}</p>
-          <div className="grid">
+          <ul className="listing">
             {courses.map((c) => (
-              <article key={c.id} className="card">
-                <p className="small muted" style={{ margin: 0 }}>
-                  {c.universityName} {c.isDemo && <span className="badge demo">Demo course</span>}
-                </p>
-                <h3 style={{ margin: "0.2rem 0" }}><Link href={`/courses/${c.slug}`}>{c.code} · {c.title}</Link></h3>
-                <p className="small muted">{c.subject}</p>
-                <p className="small">
-                  <b>{c.reviewedCount}</b> student-reviewed · <b>{c.unreviewedCount}</b> unreviewed
-                </p>
-                {c.topicMatches.length > 0 && <p className="small muted">Topic match: {c.topicMatches.join(", ")}</p>}
+              <li key={c.id}>
+                <div>
+                  <span className="title"><Link href={`/courses/${c.slug}`}>{c.code} · {c.title}</Link></span>{" "}
+                  {c.isDemo && <span className="badge demo">Demo course</span>}
+                  <p className="small muted">{c.universityName} · {c.subject}</p>
+                  <p className="small">
+                    <b>{c.reviewedCount}</b> student-reviewed · <b>{c.unreviewedCount}</b> unreviewed
+                    {c.topicMatches.length > 0 && <span className="muted"> · topic match: {c.topicMatches.join(", ")}</span>}
+                  </p>
+                </div>
                 <Link className="btn small" href={`/practice/setup?course=${c.slug}`}>Start practice</Link>
-              </article>
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
       ) : (
         <section>

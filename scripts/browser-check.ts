@@ -123,10 +123,33 @@ async function authedPages() {
   await browser.close();
 }
 
+async function darkPass() {
+  const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
+  const ctx = await browser.newContext({ viewport: { width: 1100, height: 900 }, bypassCSP: true, colorScheme: "dark" });
+  const page = await ctx.newPage();
+  for (const p of ["/", "/courses/demo-101?review=all", "/practice/setup?course=demo-101&unreviewed=1", "/about", "/auth/sign-in", "/contribute/new"]) {
+    await page.goto(BASE + p);
+    await axe(page, `[dark] ${p}`);
+  }
+  // A real session in dark mode: answer one question to check correct/incorrect colours.
+  const res = await page.request.post(BASE + "/api/sessions", { data: { courseId: (await (await page.request.get(BASE + "/api/courses/demo-101")).json()).id, count: 3, mode: "practice", includeUnreviewed: true }, headers: { Origin: BASE } });
+  const { id } = await res.json();
+  await page.goto(`${BASE}/practice/${id}`);
+  await page.locator('input[type="radio"]').first().check();
+  await page.getByRole("button", { name: "Check answer" }).click();
+  await page.getByLabel("Feedback").waitFor();
+  await axe(page, "[dark] practice feedback");
+  await shot(page, "dark-feedback");
+  await page.goto(BASE);
+  await shot(page, "dark-home");
+  await browser.close();
+}
+
 (async () => {
   await guestFlow(1100, 900, "desktop");
   await guestFlow(375, 760, "mobile");
   await authedPages();
+  await darkPass();
   console.log(failures ? `\n${failures} check(s) failed` : "\nAll browser checks passed");
   process.exit(failures ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(2); });
