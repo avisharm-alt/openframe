@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import "@fontsource-variable/inter/wght.css";
+import "@fontsource-variable/newsreader/opsz.css";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 import { currentActor } from "@/lib/session";
 import { config } from "@/lib/config";
 import { isReviewer } from "@/lib/types";
 import { SignOutButton } from "@/components/AuthForms";
+import { NavLink } from "@/components/NavLink";
+import { BrandMark } from "@/components/Icons";
 import { SITE_NOTICE } from "@/lib/copy";
 
 export const metadata: Metadata = {
@@ -30,14 +34,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </div>
         <header className="site">
           <div className="wrap">
-            <Link href="/" className="brand">OpenFrame</Link>
+            <Link href="/" className="brand"><BrandMark /><span>OpenFrame</span></Link>
             <nav className="main" aria-label="Main">
-              <Link href="/">Courses</Link>
-              <Link href="/saved">Saved &amp; history</Link>
-              <Link href="/contribute">Contribute</Link>
-              {isReviewer(actor) && <Link href="/moderation">Moderation</Link>}
+              <NavLink href="/" match={["/courses", "/practice"]}>Courses</NavLink>
+              <NavLink href="/saved">Saved &amp; history</NavLink>
+              <NavLink href="/contribute">Contribute</NavLink>
+              {isReviewer(actor) && <NavLink href="/moderation">Moderation</NavLink>}
             </nav>
-            <div className="row small">
+            <div className="account">
               {actor ? (
                 <>
                   <Link href="/account">{actor.name || "Account"}</Link>
@@ -57,6 +61,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </main>
         <footer className="site">
           <div className="wrap">
+            <div className="foot-brand"><BrandMark size={20} /><span>OpenFrame</span></div>
+            <p>
+              OpenFrame is a free, open-source, nonprofit-oriented student project (application code under the MIT license). No ads, no subscriptions, no sale of data.
+              It is not a registered charity. Practice scores are not predictions of exam results.
+            </p>
             <nav aria-label="Policies">
               <Link href="/about">About</Link>
               <Link href="/guidelines">Contribution guidelines</Link>
@@ -64,10 +73,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/privacy">Privacy</Link>
               <Link href="/content-removal">Content removal</Link>
             </nav>
-            <p>
-              OpenFrame is a free, open-source, nonprofit-oriented student project (application code under the MIT license). No ads, no subscriptions, no sale of data.
-              It is not a registered charity. Practice scores are not predictions of exam results.
-            </p>
           </div>
         </footer>
       </body>

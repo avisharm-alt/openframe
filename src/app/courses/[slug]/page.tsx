@@ -18,9 +18,9 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
   const total = count(course.reviewedCount, course.unreviewedCount);
   return (
     <>
-      <p className="small"><Link href="/">← All courses</Link></p>
+      <p className="crumb"><Link href="/">← All courses</Link></p>
       <h1>{course.code} · {course.title} {course.isDemo && <span className="badge demo">Demo course</span>}</h1>
-      <p className="muted">{course.universityName} · {course.subject}</p>
+      <p className="muted course-meta">{course.universityName} · {course.subject}</p>
       {course.description && <p>{course.description}</p>}
       {course.contexts.length > 0 && <p className="small muted">Offerings: {course.contexts.map((c) => `${c.label}${c.academicYear ? ` (${c.academicYear})` : ""}`).join(", ")}</p>}
       <div className="notice" role="note">{COURSE_NOTICE}</div>
@@ -39,16 +39,17 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
           You can <Link href="/contribute">contribute a question</Link>.
         </div>
       ) : (
-        <p><Link className="btn" href={`/practice/setup?course=${slug}${review === "all" ? "&unreviewed=1" : ""}`}>Start practice ({total} question{total === 1 ? "" : "s"})</Link></p>
+        <p className="cta"><Link className="btn" href={`/practice/setup?course=${slug}${review === "all" ? "&unreviewed=1" : ""}`}>Start practice ({total} question{total === 1 ? "" : "s"})</Link></p>
       )}
 
       {course.units.map((u) => (
         <section key={u.id} aria-labelledby={`u-${u.id}`}>
           <h2 id={`u-${u.id}`}>{u.title}</h2>
-          <ul>
+          <ul className="topics">
             {u.topics.map((t) => (
               <li key={t.id}>
-                {t.title} — <span className="muted">{count(t.reviewedCount, t.unreviewedCount)} question{count(t.reviewedCount, t.unreviewedCount) === 1 ? "" : "s"}</span>
+                <span>{t.title}<span className="sr-only"> — </span></span>
+                <span className="muted count">{count(t.reviewedCount, t.unreviewedCount)} question{count(t.reviewedCount, t.unreviewedCount) === 1 ? "" : "s"}</span>
               </li>
             ))}
           </ul>

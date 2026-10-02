@@ -3,7 +3,7 @@ export const metadata = { title: "Privacy" };
 export default function Privacy() {
   const sec = config.securityContact;
   return (
-    <div style={{ maxWidth: "44rem" }}>
+    <div className="prose">
       <h1>Privacy</h1>
       <p>This is a plain description of what the software does. It is not legal advice and does not by itself guarantee compliance with any law.</p>
       <h2>What we collect</h2>

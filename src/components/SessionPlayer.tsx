@@ -135,9 +135,9 @@ export function SessionPlayer({ sessionId, signedIn, bookmarked }: { sessionId: 
 
   return (
     <div>
-      <div className="row space">
-        <h1 style={{ margin: 0, fontSize: "1.4rem", border: "none", padding: 0 }}>{selfTest ? "Self-test" : "Practice"}</h1>
-        {remaining !== null && <p role="timer" aria-live="off" className="badge" style={{ fontSize: "1rem" }}>Time left: {fmt(remaining)}</p>}
+      <div className="row space session-head">
+        <h1>{selfTest ? "Self-test" : "Practice"}</h1>
+        {remaining !== null && <p role="timer" aria-live="off" className="badge timer">Time left: {fmt(remaining)}</p>}
       </div>
       {data.requested > total && (
         <p className="notice" role="note">You asked for {data.requested} questions but only {total} matched, so this session has {total}. Questions are never repeated to fill a session.</p>
@@ -180,13 +180,13 @@ export function SessionPlayer({ sessionId, signedIn, bookmarked }: { sessionId: 
         />
       )}
 
-      <div className="row" style={{ marginTop: "1rem" }}>
+      <div className="row nav-row">
         <button className="btn secondary" disabled={idx === 0} onClick={() => go(idx - 1)}>Previous</button>
         {item.status === "available" && !item.reveal && (
           <button className="btn secondary" onClick={() => skip(item)}>Skip</button>
         )}
         <button className="btn secondary" disabled={idx >= total - 1} onClick={() => go(idx + 1)}>Next</button>
-        <span style={{ flex: 1 }} />
+        <span className="grow" />
         <button className="btn" onClick={() => setDialog("finish")}>Finish session</button>
         <button className="btn secondary" onClick={() => setDialog("abandon")}>Abandon</button>
       </div>
@@ -252,7 +252,7 @@ function QuestionCard({ item, selfTest, choice, onChoose, onCheck, busy, feedbac
   return (
     <article className="card" aria-labelledby={`stem-${item.id}`}>
       <QuestionMeta {...q} />
-      <div id={`stem-${item.id}`} style={{ margin: "0.8rem 0" }}><Markdown>{q.stem}</Markdown></div>
+      <div id={`stem-${item.id}`} className="stem"><Markdown>{q.stem}</Markdown></div>
       <OptionList item={item} choice={choice} onChoose={onChoose} locked={revealed} showReveal={revealed} />
       {!selfTest && !revealed && (
         <button className="btn" disabled={!choice || busy} onClick={onCheck}>Check answer</button>
@@ -294,7 +294,7 @@ function ResultsView({ data, signedIn, bookmarked }: { data: State; signedIn: bo
   return (
     <div>
       <h1>Results</h1>
-      <p className="muted">{r.total ? `${r.correct} of ${r.total} correct (${pct}%).` : "No scored questions."} This is a practice result, not a prediction of exam performance.</p>
+      <p className="lead">{r.total ? `${r.correct} of ${r.total} correct (${pct}%).` : "No scored questions."} This is a practice result, not a prediction of exam performance.</p>
       <div className="stats" role="list">
         <div className="stat" role="listitem"><b>{r.answered}</b>Answered</div>
         <div className="stat" role="listitem"><b>{r.correct}</b>Correct</div>
@@ -330,7 +330,7 @@ function ResultsView({ data, signedIn, bookmarked }: { data: State; signedIn: bo
             <>
               <p className="label" style={{ marginTop: 0 }}>Question {i + 1} — {it.reveal?.isCorrect === null ? "skipped" : it.reveal?.isCorrect ? "✓ correct" : "✗ incorrect"}</p>
               <QuestionMeta {...it.question} />
-              <div style={{ margin: "0.6rem 0" }}><Markdown>{it.question.stem}</Markdown></div>
+              <div className="stem review"><Markdown>{it.question.stem}</Markdown></div>
               <OptionList item={it} choice="" locked showReveal={hasKey} />
               <div className="row">
                 <ReportButton questionId={it.question.questionId} />

@@ -1,7 +1,7 @@
 export const metadata = { title: "Academic integrity" };
 export default function Integrity() {
   return (
-    <div style={{ maxWidth: "44rem" }}>
+    <div className="prose">
       <h1>Academic integrity</h1>
       <p>OpenFrame exists to help students practise, not to circulate assessments.</p>
       <h2>We never accept actual university assessments</h2>

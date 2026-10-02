@@ -2,7 +2,7 @@ import Link from "next/link";
 export const metadata = { title: "Contribution guidelines" };
 export default function Guidelines() {
   return (
-    <div style={{ maxWidth: "44rem" }}>
+    <div className="prose">
       <h1>Contribution guidelines</h1>
       <h2>What a good question looks like</h2>
       <ul>
