@@ -20,8 +20,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
 
       {courses.length > 0 ? (
         <section className="course-section" aria-labelledby="results-h">
-          <h2 id="results-h">{q ? `Courses matching “${q}”` : "Available courses"}</h2>
-          <p className="muted small" role="status">{q ? `${courses.length} course${courses.length === 1 ? "" : "s"} match “${q}”.` : `${courses.length} course${courses.length === 1 ? "" : "s"} available.`}</p>
+          <div className="course-section-heading">
+            <h2 id="results-h">{q ? `Courses matching “${q}”` : "Available courses"}</h2>
+            <p className="muted small" role="status">{q ? `${courses.length} course${courses.length === 1 ? "" : "s"} match “${q}”.` : `${courses.length} course${courses.length === 1 ? "" : "s"} available.`}</p>
+          </div>
           <ul className="listing">
             {courses.map((c) => (
               <li key={c.id}>
@@ -34,7 +36,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
                     {c.topicMatches.length > 0 && <span className="muted"> · topic match: {c.topicMatches.join(", ")}</span>}
                   </p>
                 </div>
-                <Link className="btn small" href={`/practice/setup?course=${c.slug}`}>Start practice</Link>
+                <Link className="btn secondary small" href={`/practice/setup?course=${c.slug}`}>Start practice</Link>
               </li>
             ))}
           </ul>
