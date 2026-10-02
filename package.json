@@ -1,0 +1,55 @@
+{
+  "name": "openframe",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenFrame: a free, open-source, student-run practice question bank.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.9"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts",
+    "db:seed-demo": "tsx --env-file-if-exists=.env.local scripts/seed-demo.ts",
+    "db:backup": "tsx --env-file-if-exists=.env.local scripts/backup.ts",
+    "admin:grant": "tsx --env-file-if-exists=.env.local scripts/grant-role.ts",
+    "admin:purge-guests": "tsx --env-file-if-exists=.env.local scripts/purge-guest-sessions.ts",
+    "admin:delete-user": "tsx --env-file-if-exists=.env.local scripts/delete-user.ts",
+    "e2e": "bash scripts/run-e2e.sh",
+    "check": "npm run lint && npm run typecheck && npm test",
+    "browser-check": "tsx scripts/browser-check.ts",
+    "e2e:walkthrough": "tsx scripts/e2e-walkthrough.ts",
+    "db:gen-auth-sql": "tsx --env-file-if-exists=.env.local scripts/gen-auth-sql.ts"
+  },
+  "dependencies": {
+    "better-auth": "1.7.7",
+    "better-sqlite3": "13.0.3",
+    "katex": "0.19.0",
+    "next": "16.3.8",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-markdown": "10.1.0",
+    "rehype-katex": "7.0.1",
+    "remark-gfm": "4.0.1",
+    "remark-math": "6.0.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "9.6.0",
+    "@types/node": "26.6.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "axe-core": "4.13.0",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.8",
+    "playwright-core": "1.63.0",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

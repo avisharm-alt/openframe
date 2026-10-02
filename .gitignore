@@ -1,0 +1,13 @@
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+data/*
+!data/.gitkeep
+.env
+.env.local
+*.db
+*.db-wal
+*.db-shm
+backups/
+coverage/
