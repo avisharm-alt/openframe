@@ -56,11 +56,11 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
     );
   }
   function Requests() {
-    const rows = listCourseRequests(actor!) as { id: string; code: string; title: string; note: string; createdAt: string }[];
+    const rows = listCourseRequests(actor!) as { id: string; code: string; title: string; note: string; universityName: string | null; createdAt: string }[];
     if (!rows.length) return <p className="muted">No course requests.</p>;
     return (
-      <div className="table-wrap" tabIndex={0} role="region" aria-label="Table (scrollable)"><table><thead><tr><th scope="col">Date</th><th scope="col">Code</th><th scope="col">Title</th><th scope="col">Note</th></tr></thead>
-        <tbody>{rows.map((r) => <tr key={r.id}><td>{r.createdAt.slice(0, 10)}</td><td>{r.code}</td><td>{r.title}</td><td>{r.note}</td></tr>)}</tbody></table></div>
+      <div className="table-wrap" tabIndex={0} role="region" aria-label="Table (scrollable)"><table><thead><tr><th scope="col">Date</th><th scope="col">University</th><th scope="col">Code</th><th scope="col">Title</th><th scope="col">Note</th></tr></thead>
+        <tbody>{rows.map((r) => <tr key={r.id}><td>{r.createdAt.slice(0, 10)}</td><td>{r.universityName ?? "Not specified"}</td><td>{r.code}</td><td>{r.title}</td><td>{r.note}</td></tr>)}</tbody></table></div>
     );
   }
   function Events() {

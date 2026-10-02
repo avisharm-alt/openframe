@@ -18,7 +18,7 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
   const total = count(course.reviewedCount, course.unreviewedCount);
   return (
     <>
-      <p className="small"><Link href="/">← All courses</Link></p>
+      <p className="small"><Link href={`/universities/${course.universitySlug}`}>← {course.universityName} courses</Link></p>
       <h1>{course.code} · {course.title} {course.isDemo && <span className="badge demo">Demo course</span>}</h1>
       <p className="muted">{course.universityName} · {course.subject}</p>
       {course.description && <p>{course.description}</p>}

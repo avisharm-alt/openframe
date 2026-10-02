@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { getDb, now, uid } from "../db";
-import { notFound } from "../errors";
+import { notFound, invalid } from "../errors";
 import { courseRequestSchema, reportSchema } from "../validation";
 import type { Actor } from "../types";
 import { logEvent } from "./events";
@@ -38,6 +38,12 @@ export function createReport(actor: Actor | null, reporterHash: string, raw: z.i
 export function createCourseRequest(actor: Actor | null, raw: z.infer<typeof courseRequestSchema>) {
   const input = courseRequestSchema.parse(raw);
   const id = uid();
-  getDb().prepare("INSERT INTO course_request (id, user_id, code, title, note, created_at) VALUES (?,?,?,?,?,?)").run(id, actor?.id ?? null, input.code, input.title, input.note, now());
+  const db = getDb();
+  if (input.universitySlug && !db.prepare("SELECT 1 FROM university WHERE slug = ? AND enabled = 1").get(input.universitySlug)) {
+    throw invalid("Unknown university.");
+  }
+  db.prepare("INSERT INTO course_request (id, user_id, university_slug, code, title, note, created_at) VALUES (?,?,?,?,?,?,?)").run(
+    id, actor?.id ?? null, input.universitySlug ?? null, input.code, input.title, input.note, now(),
+  );
   return { id };
 }

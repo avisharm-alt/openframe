@@ -1,6 +1,6 @@
 // User-facing disclosure text, kept in one place so wording stays consistent.
 export const SITE_NOTICE =
-  "OpenFrame is an independent, student-run project and is not affiliated with or endorsed by Western University. Questions are student-contributed and created with AI assistance. They may contain errors and may not match your course's current content or assessments.";
+  "OpenFrame is an independent, student-run project and is not affiliated with or endorsed by any university. Questions are student-contributed and created with AI assistance. They may contain errors and may not match your course's current content or assessments.";
 
 export const FIRST_PRACTICE_NOTICE =
   "Use this bank as supplementary practice. Check explanations against your course materials. Questions are not official exam questions, and practice scores do not predict exam results.";

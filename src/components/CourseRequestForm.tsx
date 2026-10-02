@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api-client";
 
-export function CourseRequestForm({ initialCode = "" }: { initialCode?: string }) {
+export function CourseRequestForm({ initialCode = "", universities, universitySlug }: { initialCode?: string; universities?: { slug: string; name: string }[]; universitySlug?: string }) {
   const [state, setState] = useState<"idle" | "busy" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -11,7 +11,7 @@ export function CourseRequestForm({ initialCode = "" }: { initialCode?: string }
     setState("busy");
     setError(null);
     try {
-      await api("POST", "/api/course-requests", { code: String(f.get("code")), title: String(f.get("title") || ""), note: String(f.get("note") || "") });
+      await api("POST", "/api/course-requests", { universitySlug: String(f.get("universitySlug")), code: String(f.get("code")), title: String(f.get("title") || ""), note: String(f.get("note") || "") });
       setState("done");
     } catch (err) {
       setError((err as Error).message);
@@ -23,6 +23,15 @@ export function CourseRequestForm({ initialCode = "" }: { initialCode?: string }
     <form onSubmit={onSubmit} className="card">
       <h2 style={{ marginTop: 0 }}>Request a course</h2>
       <p className="muted small">Course coverage is added by volunteers. Tell us which course you would like to see; we do not collect grades or student numbers.</p>
+      {universitySlug ? <input type="hidden" name="universitySlug" value={universitySlug} /> : (
+        <>
+          <label htmlFor="rc-university">University</label>
+          <select id="rc-university" name="universitySlug" required defaultValue="">
+            <option value="" disabled>Select a university</option>
+            {universities?.map((u) => <option key={u.slug} value={u.slug}>{u.name}</option>)}
+          </select>
+        </>
+      )}
       <label htmlFor="rc-code">Course code</label>
       <input id="rc-code" name="code" type="text" required minLength={2} maxLength={30} defaultValue={initialCode} />
       <label htmlFor="rc-title">Course title <span className="help">Optional</span></label>

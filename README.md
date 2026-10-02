@@ -1,8 +1,8 @@
 # OpenFrame
 
-A free, open-source, nonprofit-oriented, **student-run question bank**, launching at Western University (UWO). Students find original, student-contributed, AI-assisted multiple-choice practice questions organised by course and topic, with an explanation for every option and a transparent review process.
+A free, open-source, nonprofit-oriented, **student-run question bank**, with university directories for Western University and the University of Toronto. Students find original, student-contributed, AI-assisted multiple-choice practice questions organised by course and topic, with an explanation for every option and a transparent review process.
 
-OpenFrame is independent and is **not affiliated with or endorsed by Western University** or any instructor. It has no subscriptions, ads, paid tiers, payments or sale of data, and does not claim registered charitable status. It never accepts actual university assessments (see [Academic integrity](src/app/academic-integrity/page.tsx) and `docs/MAINTAINERS.md`).
+OpenFrame is independent and is **not affiliated with or endorsed by any university** or instructor. It has no subscriptions, ads, paid tiers, payments or sale of data, and does not claim registered charitable status. It never accepts actual university assessments (see [Academic integrity](src/app/academic-integrity/page.tsx) and `docs/MAINTAINERS.md`).
 
 > **Status: MVP, not launched.** Production starts empty. Do not open real submissions until the owner confirms the content license and the real contact/review configuration (see "Launch requirements" below).
 
@@ -10,7 +10,7 @@ OpenFrame is independent and is **not affiliated with or endorsed by Western Uni
 
 | Workflow | Where |
 |---|---|
-| Browse/search courses and topics, no account | `/` |
+| Browse universities, then their courses; search courses and topics, no account | `/`, `/universities/[slug]` |
 | Course page: topic counts, review-status filter, unofficial notice | `/courses/[slug]` |
 | Practice setup (topics, 5/10/20 presets, difficulty, mode, optional timer) | `/practice/setup` |
 | Practice mode (feedback + all-option explanations per answer) and self-test mode (nothing revealed until finish, scored server-side) | `/practice/[id]` |
@@ -24,7 +24,7 @@ OpenFrame is independent and is **not affiliated with or endorsed by Western Uni
 ## Stack (and why)
 
 - **Next.js 16** (App Router) + **React 19** + **TypeScript** — mainstream, one deployable Node process.
-- **SQLite** via `better-sqlite3` — real relational persistence, plain-SQL migrations in `migrations/`, zero-ops backups (a single file), cheap for volunteer maintainers. The schema is multi-university; only Western is enabled in the UI.
+- **SQLite** via `better-sqlite3` — real relational persistence, plain-SQL migrations in `migrations/`, zero-ops backups (a single file), cheap for volunteer maintainers. The schema supports multiple universities; Western and U of T are enabled, with U of T starting empty.
 - **Better Auth** — maintained auth library: **Google OAuth** sign-in, cookie sessions, built-in rate limiting. No passwords are stored in production. The `role` column is server-controlled and cannot be set by clients.
 - **Zod** for server-side validation; **react-markdown + KaTeX** for safe Markdown/maths (raw HTML, images and iframes disabled).
 - **Vitest** for tests; **Playwright (Chromium) + axe-core** for the browser/accessibility check.
