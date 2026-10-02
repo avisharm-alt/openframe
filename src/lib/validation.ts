@@ -140,6 +140,7 @@ export const reportSchema = z.strictObject({
 });
 
 export const courseRequestSchema = z.strictObject({
+  universitySlug: z.string().trim().min(1).max(80).optional(),
   code: z.string().trim().min(2).max(30),
   title: trimmed(120).optional().default(""),
   note: trimmed(1000).optional().default(""),

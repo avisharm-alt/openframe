@@ -165,7 +165,7 @@ export function updateReport(actor: Actor, id: string, input: { state: string; n
 
 export function listCourseRequests(actor: Actor) {
   requireReviewer(actor);
-  return getDb().prepare("SELECT id, code, title, note, created_at AS createdAt FROM course_request ORDER BY created_at DESC LIMIT 200").all();
+  return getDb().prepare("SELECT cr.id, cr.code, cr.title, cr.note, u.name AS universityName, cr.created_at AS createdAt FROM course_request cr LEFT JOIN university u ON u.slug = cr.university_slug ORDER BY cr.created_at DESC LIMIT 200").all();
 }
 
 export function listEvents(actor: Actor, questionId?: string) {

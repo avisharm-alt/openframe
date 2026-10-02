@@ -119,6 +119,15 @@ legend { font-weight: 600; padding: 0 0.4rem; }
 .search-controls { display: flex; gap: 0.6rem; }
 .search input { flex: 1; font-size: 1rem; padding: 0.55rem 0.8rem; }
 .search .btn { padding: 0.5rem 1.1rem; font-size: 0.95rem; }
+.eyebrow { margin: 0 0 0.7rem; font-family: var(--mono); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.university-hero { padding-top: 0.9rem; }
+.university-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem; margin: 1.25rem 0 0; }
+.university-panel { display: flex; flex-direction: column; min-height: 10rem; border: 1px solid var(--border); border-radius: var(--radius); padding: 1.1rem 1.2rem; color: var(--text); text-decoration: none; }
+.university-panel:hover { border-color: var(--border-strong); background: var(--surface-2); text-decoration: none; }
+.university-panel-index { color: var(--muted); font-family: var(--mono); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.05em; }
+.university-panel-name { display: block; margin: 0.8rem 0 1rem; font-size: 1.2rem; font-weight: 600; line-height: 1.25; letter-spacing: -0.015em; }
+.university-panel-foot { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-top: auto; color: var(--muted); font-family: var(--mono); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+.university-panel-foot span:last-child { color: var(--link); font-family: inherit; font-size: 1rem; }
 .course-section { border-top: 1px solid var(--border); padding-top: 1.5rem; }
 .course-section-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.25rem 1rem; }
 .course-section-heading h2, .course-section-heading p { margin: 0; }
@@ -183,6 +192,8 @@ details > summary { cursor: pointer; font-weight: 600; }
 @media (min-width: 62rem) { .two { grid-template-columns: 1fr 1fr; } .wrap:has(.two) { max-width: 74rem; } }
 @media (max-width: 40rem) {
   .search-controls { flex-direction: column; }
+  .university-grid { grid-template-columns: 1fr; }
+  .university-panel { min-height: 8.5rem; }
   .listing > li { grid-template-columns: 1fr; }
   header.site .wrap { gap: 0.3rem 1rem; }
   nav.main { order: 3; flex-basis: 100%; gap: 0.1rem 1rem; }

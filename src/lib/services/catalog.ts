@@ -15,30 +15,51 @@ export type CourseSummary = {
   description: string;
   isDemo: boolean;
   universityName: string;
+  universitySlug: string;
   reviewedCount: number;
   unreviewedCount: number;
   topicMatches: string[];
 };
 
-export function listCourses(q?: string): CourseSummary[] {
+export type UniversitySummary = { slug: string; name: string; courseCount: number };
+
+export function listUniversities(): UniversitySummary[] {
+  return getDb().prepare(
+    `SELECT u.slug, u.name, COUNT(c.id) AS courseCount
+     FROM university u LEFT JOIN course c ON c.university_id = u.id AND c.status = 'active'
+     WHERE u.enabled = 1
+     GROUP BY u.id
+     ORDER BY CASE u.slug WHEN 'western' THEN 0 WHEN 'uoft' THEN 1 ELSE 2 END, u.name`,
+  ).all() as UniversitySummary[];
+}
+
+export function getUniversity(slug: string): UniversitySummary {
+  const university = listUniversities().find((u) => u.slug === slug);
+  if (!university) throw notFound("University not found");
+  return university;
+}
+
+export function listCourses(q?: string, universitySlug?: string): CourseSummary[] {
   const db = getDb();
   const term = (q ?? "").trim().slice(0, 100);
   const like = `%${likeEscape(term.toLowerCase())}%`;
   const rows = db
     .prepare(
-      `SELECT c.id, c.slug, c.code, c.title, c.subject, c.description, c.is_demo AS isDemo, u.name AS universityName,
+      `SELECT c.id, c.slug, c.code, c.title, c.subject, c.description, c.is_demo AS isDemo,
+        u.name AS universityName, u.slug AS universitySlug,
         (SELECT COUNT(*) FROM question q JOIN question_revision r ON r.id = q.live_revision_id
            WHERE q.course_id = c.id AND ${PUBLISHED} AND r.review_status = 'student_reviewed') AS reviewedCount,
         (SELECT COUNT(*) FROM question q JOIN question_revision r ON r.id = q.live_revision_id
            WHERE q.course_id = c.id AND ${PUBLISHED} AND r.review_status = 'unreviewed') AS unreviewedCount
        FROM course c JOIN university u ON u.id = c.university_id
        WHERE c.status = 'active' AND u.enabled = 1
+         AND (@universitySlug = '' OR u.slug = @universitySlug)
          AND (@term = '' OR lower(c.code) LIKE @like ESCAPE '\\' OR lower(c.title) LIKE @like ESCAPE '\\'
               OR lower(c.subject) LIKE @like ESCAPE '\\'
               OR EXISTS (SELECT 1 FROM topic t WHERE t.course_id = c.id AND lower(t.title) LIKE @like ESCAPE '\\'))
        ORDER BY c.code`,
     )
-    .all({ term, like }) as Omit<CourseSummary, "topicMatches">[];
+    .all({ term, like, universitySlug: universitySlug ?? "" }) as Omit<CourseSummary, "topicMatches">[];
   return rows.map((r) => ({
     ...r,
     isDemo: !!r.isDemo,

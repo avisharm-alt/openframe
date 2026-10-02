@@ -5,12 +5,12 @@ export default function About() {
     <div style={{ maxWidth: "44rem" }}>
       <h1>About OpenFrame</h1>
       <p>
-        OpenFrame is a free, open-source, nonprofit-oriented, student-run question bank, starting at Western University. Students find original, student-contributed,
+        OpenFrame is a free, open-source, nonprofit-oriented, student-run question bank, with university directories for Western University and the University of Toronto. Students find original, student-contributed,
         AI-assisted multiple-choice practice questions organised by course and topic, each with an explanation for every option.
       </p>
       <h2>What it is not</h2>
       <ul>
-        <li><b>Independent.</b> OpenFrame is not affiliated with or endorsed by Western University or any instructor, and does not use university logos or seals.</li>
+        <li><b>Independent.</b> OpenFrame is not affiliated with or endorsed by any university or instructor, and does not use university logos or seals.</li>
         <li><b>Not official.</b> Questions are not official exam questions and are not aligned to any current syllabus or assessment. Check explanations against your course materials.</li>
         <li><b>Not a predictor.</b> Practice scores do not predict exam results.</li>
         <li><b>Not a charity (yet).</b> We describe ourselves as a nonprofit-oriented initiative and make no claim of registered charitable status.</li>

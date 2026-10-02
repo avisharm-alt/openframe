@@ -12,7 +12,7 @@ export function seedDemoContent(db: DB) {
   const existing = db.prepare("SELECT id FROM university WHERE slug = 'western'").get() as { id: string } | undefined;
   const uniId = existing?.id ?? uid();
   if (!existing) {
-    // Western is the only university enabled in the initial UI. The schema supports more.
+    // Demo courses belong to Western; U of T starts without courses.
     db.prepare("INSERT INTO university (id, slug, name, enabled) VALUES (?,?,?,1)").run(uniId, "western", "Western University");
   }
   const out: { courseId: string; slug: string; topicIds: Record<string, string>; questionIds: string[] }[] = [];

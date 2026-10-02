@@ -1,16 +1,18 @@
 import Link from "next/link";
-import { listCourses } from "@/lib/services/catalog";
+import { listCourses, listUniversities } from "@/lib/services/catalog";
 import { CourseRequestForm } from "@/components/CourseRequestForm";
+import { CourseList } from "@/components/CourseList";
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const q = ((await searchParams).q ?? "").trim().slice(0, 100);
-  const courses = listCourses(q);
-  const all = q ? listCourses() : courses;
+  const universities = listUniversities();
+  const courses = q ? listCourses(q) : [];
+  const all = q ? listCourses() : [];
   return (
     <>
       <section className="hero">
-        <h1>Practice questions by course</h1>
-        <p className="muted">Browse student-contributed questions by course or topic. Each question includes explanations, and you can practise without an account.</p>
+        <h1>Find your courses</h1>
+        <p className="muted">Choose your university to browse its courses and practice questions, or search across all courses.</p>
         <form role="search" className="search" action="/" method="get">
           <label htmlFor="q" className="search-label">Search courses and topics</label>
           <div className="search-controls">
@@ -20,48 +22,45 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
         </form>
       </section>
 
-      {courses.length > 0 ? (
-        <section className="course-section" aria-labelledby="results-h">
+      {!q && (
+        <section className="course-section" aria-labelledby="universities-h">
           <div className="course-section-heading">
-            <h2 id="results-h">{q ? `Courses matching “${q}”` : "Available courses"}</h2>
-            <p className="muted small" role="status">{q ? `${courses.length} course${courses.length === 1 ? "" : "s"} match “${q}”.` : `${courses.length} course${courses.length === 1 ? "" : "s"} available.`}</p>
+            <h2 id="universities-h">Universities</h2>
+            <p className="muted small">{universities.length} available</p>
           </div>
-          <ul className="listing">
-            {courses.map((c) => (
-              <li key={c.id}>
-                <div className="course-details">
-                  <div className="course-title-row">
-                    <span className="title"><Link href={`/courses/${c.slug}`} aria-label={`${c.code} · ${c.title}`}><span className="course-code">{c.code}</span><span className="course-title">{c.title}</span></Link></span>
-                    {c.isDemo && <span className="badge demo">Demo course</span>}
-                  </div>
-                  <p className="small muted course-meta">{c.universityName} <span aria-hidden="true">/</span> {c.subject}</p>
-                  <p className="small course-counts">
-                    <span><b>{c.reviewedCount}</b> student-reviewed</span><span><b>{c.unreviewedCount}</b> unreviewed</span>
-                    {c.topicMatches.length > 0 && <span className="muted"> · topic match: {c.topicMatches.join(", ")}</span>}
-                  </p>
-                </div>
-                <Link className="course-action" href={`/practice/setup?course=${c.slug}`}>Start practice <span aria-hidden="true">→</span></Link>
-              </li>
+          <div className="university-grid">
+            {universities.map((u) => (
+              <Link className="university-panel" href={`/universities/${u.slug}`} key={u.slug}>
+                <span className="university-panel-index">{u.slug === "uoft" ? "U OF T" : u.slug.toUpperCase()}</span>
+                <span className="university-panel-name">{u.name}</span>
+                <span className="university-panel-foot"><span>{u.courseCount} course{u.courseCount === 1 ? "" : "s"}</span><span aria-hidden="true">→</span></span>
+              </Link>
             ))}
-          </ul>
-        </section>
-      ) : (
-        <section>
-          <div className="notice" role="status">
-            {q ? (
-              <>No course matches “{q}” yet.{all.length ? " Try a different search or browse all courses." : ""}</>
-            ) : (
-              <>No courses have been added yet. OpenFrame starts empty until reviewed content is supplied by volunteers.</>
-            )}
           </div>
-          {q && all.length > 0 && <p><Link href="/">Browse all courses</Link></p>}
         </section>
       )}
 
-      <details id="request" style={{ marginTop: "2rem" }} open={courses.length === 0}>
+      {q && courses.length > 0 ? (
+        <section className="course-section" aria-labelledby="results-h">
+          <div className="course-section-heading">
+            <h2 id="results-h">Courses matching “{q}”</h2>
+            <p className="muted small" role="status">{courses.length} course{courses.length === 1 ? "" : "s"} found</p>
+          </div>
+          <CourseList courses={courses} showUniversity />
+        </section>
+      ) : q ? (
+        <section>
+          <div className="notice" role="status">
+            No course matches “{q}” yet.{all.length ? " Try a different search or browse by university." : ""}
+          </div>
+          <p><Link href="/">Browse universities</Link></p>
+        </section>
+      ) : null}
+
+      <details id="request" style={{ marginTop: "2rem" }} open={!!q && courses.length === 0}>
         <summary>Don’t see your course? Request it</summary>
         <div style={{ marginTop: "0.6rem" }}>
-          <CourseRequestForm initialCode={courses.length === 0 ? q : ""} />
+          <CourseRequestForm initialCode={q && courses.length === 0 ? q : ""} universities={universities} />
         </div>
       </details>
       <p className="muted small">Or <Link href="/contribute">contribute questions</Link> for courses that already exist.</p>
