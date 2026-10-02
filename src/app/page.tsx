@@ -9,8 +9,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
   return (
     <>
       <section className="hero">
-        <h1>Find practice questions for your course</h1>
-        <p className="muted">Free, student-run, with explanations for every option. Search by course code, title or topic. No account needed.</p>
+        <h1>What are you studying?</h1>
+        <p className="muted">Find student-written practice questions for your course, with an explanation for every option. Free, student-run, and no account needed.</p>
         <form role="search" className="search" action="/" method="get">
           <label htmlFor="q" className="sr-only">Search courses and topics</label>
           <input id="q" name="q" type="search" defaultValue={q} placeholder="e.g. DEMO-102, statistics, recursion" autoComplete="off" />
