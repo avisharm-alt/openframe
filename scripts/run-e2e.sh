@@ -8,8 +8,10 @@ export DATABASE_PATH="${E2E_DB:-./data/e2e.db}"
 export OPENFRAME_DEMO=1 BASE_URL="http://localhost:$PORT" TRUST_PROXY=0
 export AUTH_SECRET="e2e-only-secret-e2e-only-secret-e2e-only-secret"
 export AUTH_SIGNUP_LIMIT_PER_HOUR=1000 AUTH_SIGNIN_LIMIT_PER_MINUTE=1000
+# Exercise the account policy: only @example.test may register, email must be verified. Mail goes to a local file (demo substitute).
+export ALLOWED_EMAIL_DOMAINS=example.test EMAIL_OUTBOX_PATH=./data/e2e-outbox.jsonl
 if curl -sf "http://localhost:$PORT/" > /dev/null 2>&1; then echo "Port $PORT is already in use (stale server?). Stop it or set E2E_PORT." >&2; exit 1; fi
-rm -f "$DATABASE_PATH" "$DATABASE_PATH-wal" "$DATABASE_PATH-shm"
+rm -f "$DATABASE_PATH" "$DATABASE_PATH-wal" "$DATABASE_PATH-shm" "$EMAIL_OUTBOX_PATH"
 npx tsx scripts/seed-demo.ts || exit 1
 NEXT_TELEMETRY_DISABLED=1 npx next build > /tmp/openframe-e2e-build.log 2>&1 || { cat /tmp/openframe-e2e-build.log; exit 1; }
 # Own process group, so the whole server tree is stopped on exit.

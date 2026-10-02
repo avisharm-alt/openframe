@@ -38,6 +38,26 @@ export const config = {
     }
     return "dev-only-secret-do-not-use-in-production-0123456789";
   },
+  /** Lower-case domains allowed to create accounts, e.g. ["uwo.ca"]. Empty = unrestricted (local/demo only). */
+  get allowedEmailDomains(): string[] {
+    return (process.env.ALLOWED_EMAIL_DOMAINS || "")
+      .split(",")
+      .map((d) => d.trim().toLowerCase().replace(/^@/, ""))
+      .filter(Boolean);
+  },
+  /** A domain allow-list is meaningless without proving the address, so it forces verification. */
+  get requireEmailVerification() {
+    return this.allowedEmailDomains.length > 0 || bool(process.env.REQUIRE_EMAIL_VERIFICATION);
+  },
+  get smtpUrl() {
+    return (process.env.SMTP_URL || "").trim();
+  },
+  get emailFrom() {
+    return (process.env.EMAIL_FROM || "OpenFrame <no-reply@localhost>").trim();
+  },
+  get emailOutboxPath() {
+    return process.env.EMAIL_OUTBOX_PATH || "./data/outbox.jsonl";
+  },
   get signupLimitPerHour() {
     return num(process.env.AUTH_SIGNUP_LIMIT_PER_HOUR, 10);
   },

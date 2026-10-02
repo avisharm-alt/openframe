@@ -9,7 +9,7 @@ export default function Privacy() {
       <h2>What we collect</h2>
       <ul>
         <li><b>Guests:</b> practice sessions are stored on the server under a random identifier so answers can be scored, and a list of those identifiers is kept in your browser. Guest sessions are deleted after a retention period set by the maintainers (30 days by default).</li>
-        <li><b>Accounts:</b> email address, display name (use a pseudonym), a password hash, and your practice history and bookmarks. We do not collect student numbers or grades.</li>
+        <li><b>Accounts:</b> email address (accounts are currently limited to university addresses and must be verified), display name (use a pseudonym), a password hash, and your practice history and bookmarks. We do not collect student numbers or grades. Verification and password-reset emails are sent through an email provider chosen by the maintainers, which therefore sees your address and those messages.</li>
         <li><b>Contributions:</b> the question text and metadata you submit, your attestation, and review records. Public attribution is optional and off by default.</li>
         <li><b>Reports and course requests:</b> the text you send. For anonymous reports we store a keyed hash of your network address, only to limit spam and duplicate reports; the address itself is not stored.</li>
         <li><b>Cookies:</b> a session cookie when you sign in. Browser storage keeps guest history on your device. No advertising or tracking cookies are used.</li>

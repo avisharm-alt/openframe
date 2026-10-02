@@ -59,7 +59,13 @@ All seeded questions are labelled **Demo** and **Unreviewed**. By default, pract
 
 ### Environment variables
 
-See `.env.example`. Key ones: `BASE_URL`, `AUTH_SECRET` (required in production, ≥32 chars), `DATABASE_PATH`, `OPENFRAME_DEMO`, `TRUST_PROXY` (set to 1 behind a reverse proxy so rate limits see client IPs), `CONTENT_REMOVAL_CONTACT`, `SECURITY_CONTACT`.
+See `.env.example`. Key ones: `BASE_URL`, `AUTH_SECRET` (required in production, ≥32 chars), `DATABASE_PATH`, `OPENFRAME_DEMO`, `TRUST_PROXY` (set to 1 behind a reverse proxy so rate limits see client IPs), `CONTENT_REMOVAL_CONTACT`, `SECURITY_CONTACT`, `ALLOWED_EMAIL_DOMAINS` (e.g. `uwo.ca`), `SMTP_URL` + `EMAIL_FROM`.
+
+### Accounts: @uwo.ca only, with verified email
+
+Set `ALLOWED_EMAIL_DOMAINS=uwo.ca`. Then sign-up accepts only addresses on exactly that domain (look-alikes such as `uwo.ca.evil.com` and `+alias` addresses are refused), and **every account must verify its email** through a link before it can sign in, because a domain check alone proves nothing. Password reset uses the same email channel. You need an SMTP account for this (`SMTP_URL`); production refuses to start without one. Notes: `@uwo.ca` addresses are issued to staff and faculty as well as students, so the domain cannot tell them apart; and a maintainer without a `@uwo.ca` address must temporarily add their own domain to the list to create their account, then run `npm run admin:grant`. Guests can still browse and practise without any account.
+
+In demo mode (`OPENFRAME_DEMO=1`, no `SMTP_URL`) emails are not sent: they are logged and appended to `data/outbox.jsonl` so you can open the links locally.
 
 ### Production
 
@@ -73,12 +79,16 @@ Migrations are applied automatically the first time the database is opened (and 
 ## Checks
 
 ```bash
-npm run check          # eslint + tsc + vitest (22 tests)
-npm run e2e            # build, start on a throwaway DB, HTTP walkthrough (40 checks) + browser/axe check
+npm run check          # eslint + tsc + vitest (27 tests)
+npm run e2e            # build, start on a throwaway DB, HTTP walkthrough (52 checks) + browser/axe check
 SKIP_BROWSER=1 npm run e2e   # HTTP walkthrough only (what CI runs)
 ```
 
 The walkthrough covers contribution → independent review → publication → practice → report → withdrawal, plus uploads, cross-origin writes, role escalation and cross-user access. The browser check drives a guest through practice **by keyboard only** at desktop and 375px widths and runs axe-core (WCAG 2.0/2.1/2.2 A/AA rules) over the main pages. Automated checks do not replace manual screen-reader testing.
+
+## Database and hosting
+
+No separate database server (and no MongoDB) is needed: data lives in one SQLite file at `DATABASE_PATH`. Run it on a host with a **persistent disk** (a small VPS, or Fly.io / Railway / Render with an attached volume), single instance, and back up that file (`npm run db:backup`). Serverless platforms with an ephemeral filesystem (for example Vercel) will lose data and are not suitable as-is. If you later outgrow one instance, the service layer in `src/lib/services/` is the only place that talks to SQL and could be pointed at Postgres.
 
 ## Layout
 

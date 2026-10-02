@@ -33,7 +33,7 @@ async function main() {
     }
     const r = await getAuth().api.signUpEmail({ body: { name: u.name, email: u.email, password: PASSWORD } });
     ids[u.email] = r.user.id;
-    db.prepare('UPDATE "user" SET role = ? WHERE id = ?').run(u.role, r.user.id);
+    db.prepare('UPDATE "user" SET role = ?, emailVerified = 1 WHERE id = ?').run(u.role, r.user.id);
   }
 
   const student = { id: ids["demo-student@example.test"], role: "student" as const };

@@ -99,7 +99,7 @@ async function authedPages() {
   const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 900 }, bypassCSP: true });
   const page = await ctx.newPage();
-  for (const p of ["/about", "/guidelines", "/academic-integrity", "/privacy", "/content-removal", "/auth/sign-in", "/auth/sign-up", "/saved", "/contribute"]) {
+  for (const p of ["/about", "/guidelines", "/academic-integrity", "/privacy", "/content-removal", "/auth/sign-in", "/auth/sign-up", "/auth/forgot-password", "/auth/reset-password?token=abc", "/saved", "/contribute"]) {
     await page.goto(BASE + p);
     await axe(page, p);
   }
