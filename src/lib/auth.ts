@@ -3,6 +3,7 @@ import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { getDb } from "./db";
 import { config } from "./config";
+import { promoteConfiguredMaintainer } from "./bootstrap";
 
 /**
  * Better Auth with cookie sessions.
@@ -42,6 +43,15 @@ export function buildAuthOptions() {
       },
     },
     databaseHooks: {
+      session: {
+        create: {
+          // Bootstrap maintainers from INITIAL_MAINTAINER_EMAILS (verified emails only).
+          before: async (session: Record<string, unknown> & { userId: string }) => {
+            promoteConfiguredMaintainer(session.userId);
+            return { data: session };
+          },
+        },
+      },
       user: {
         update: {
           before: async (data: Record<string, unknown>) => {

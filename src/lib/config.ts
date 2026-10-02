@@ -52,6 +52,16 @@ export const config = {
   get passwordLoginEnabled() {
     return this.demo;
   },
+  /**
+   * Comma-separated emails that become maintainers when they sign in with a VERIFIED email (Google).
+   * Lets you bootstrap the first maintainer on a host without shell access. It only promotes; it never demotes.
+   */
+  get initialMaintainerEmails(): string[] {
+    return (process.env.INITIAL_MAINTAINER_EMAILS || "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+  },
   get signupLimitPerHour() {
     return num(process.env.AUTH_SIGNUP_LIMIT_PER_HOUR, 10);
   },

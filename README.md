@@ -59,7 +59,7 @@ All seeded questions are labelled **Demo** and **Unreviewed**. By default, pract
 
 ### Environment variables
 
-See `.env.example`. Key ones: `BASE_URL`, `AUTH_SECRET` (required in production, ≥32 chars), `DATABASE_PATH`, `OPENFRAME_DEMO`, `TRUST_PROXY` (set to 1 behind a reverse proxy so rate limits see client IPs), `CONTENT_REMOVAL_CONTACT`, `SECURITY_CONTACT`, `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`.
+See `.env.example`. Key ones: `BASE_URL`, `AUTH_SECRET` (required in production, ≥32 chars), `DATABASE_PATH`, `OPENFRAME_DEMO`, `TRUST_PROXY` (set to 1 behind a reverse proxy so rate limits see client IPs), `CONTENT_REMOVAL_CONTACT`, `SECURITY_CONTACT`, `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`, `INITIAL_MAINTAINER_EMAILS`.
 
 ### Google sign-in
 
@@ -84,6 +84,10 @@ SKIP_BROWSER=1 npm run e2e   # HTTP walkthrough only (what CI runs)
 ```
 
 The walkthrough covers contribution → independent review → publication → practice → report → withdrawal, plus uploads, cross-origin writes, role escalation and cross-user access. The browser check drives a guest through practice **by keyboard only** at desktop and 375px widths and runs axe-core (WCAG 2.0/2.1/2.2 A/AA rules) over the main pages. Automated checks do not replace manual screen-reader testing.
+
+## Deploying
+
+Step-by-step Railway guide: [docs/DEPLOY-RAILWAY.md](docs/DEPLOY-RAILWAY.md) (one service, one persistent volume, one replica; health check at `/api/health`; first maintainer via `INITIAL_MAINTAINER_EMAILS`).
 
 ## Database and hosting
 

@@ -24,6 +24,7 @@ Initial launch: the maintainer can review others' contributions. **Nobody can re
 - Sign-in is Google OAuth only; there are no passwords and no email sending. Setup steps are in the README ("Google sign-in").
 - Anyone with a Google account can register, so you cannot assume users are Western students. Publication always needs a reviewer, one person can hold at most 10 pending submissions, and a person with several Google accounts can still only review others' work (roles are granted per account, by you).
 - New accounts get a random display name; people can change it on `/account`. Real names and photos from Google are discarded.
+- First maintainer without shell access: list your Google email in `INITIAL_MAINTAINER_EMAILS`; you are promoted at your next sign-in (verified emails only). It never demotes.
 - To make someone a reviewer: they sign in once, then `npm run admin:grant -- their@email reviewer`.
 - If Google sign-in breaks (expired consent screen, wrong redirect URI), guests can still browse and practise; fix the credentials and redeploy.
 

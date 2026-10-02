@@ -47,6 +47,8 @@ const grant = (id: string, role: string) => getDb().prepare('UPDATE "user" SET r
 
 async function main() {
   const guest = new Client();
+  const health = await guest.req("GET", "/api/health");
+  check("health endpoint reports ok", health.status === 200 && health.json.status === "ok", JSON.stringify(health.json));
   const courses = (await guest.req("GET", "/api/courses")).json.courses as any[];
   check("guest can list courses without an account", courses.length >= 1, JSON.stringify(courses));
   const demo = courses.find((c) => c.code === "DEMO-101")!;
@@ -56,6 +58,17 @@ async function main() {
   check("search by title finds courses", search.some((c) => c.code === "DEMO-102"));
   const topicSearch = (await guest.req("GET", "/api/courses?q=recursion")).json.courses as any[];
   check("search by topic finds courses", topicSearch.some((c) => c.code === "DEMO-101"));
+
+  // --- maintainer bootstrap via INITIAL_MAINTAINER_EMAILS (server started with bootstrap@example.test listed)
+  const bc = new Client();
+  const bEmail = "bootstrap@example.test";
+  const bUp = await bc.req("POST", "/api/auth/sign-up/email", { name: "bootstrap", email: bEmail, password: "correct-horse-battery" });
+  const bId = bUp.json.user?.id as string;
+  check("a listed but UNVERIFIED email is not promoted", (await bc.req("GET", "/api/me")).json.user?.role === "student" && (await bc.req("GET", "/api/moderation/queue")).status === 403);
+  getDb().prepare('UPDATE "user" SET emailVerified = 1 WHERE id = ?').run(bId); // stands in for Google having verified it
+  const bc2 = new Client();
+  await bc2.req("POST", "/api/auth/sign-in/email", { email: bEmail, password: "correct-horse-battery" });
+  check("a listed, verified email becomes maintainer on its next sign-in", (await bc2.req("GET", "/api/me")).json.user?.role === "maintainer" && (await bc2.req("GET", "/api/moderation/events")).status === 200);
 
   // --- accounts
   const author = await signUp("author");

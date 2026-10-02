@@ -12,6 +12,8 @@ const post = (path: string, body: unknown) =>
   fetch(BASE + path, { method: "POST", headers: { "Content-Type": "application/json", Origin: BASE }, body: JSON.stringify(body) });
 
 (async () => {
+  const h = await fetch(BASE + "/api/health");
+  check("health endpoint is up", h.status === 200 && ((await h.json()) as { status: string }).status === "ok");
   const up = await post("/api/auth/sign-up/email", { name: "x", email: "someone@example.com", password: "correct-horse-battery" });
   check("password sign-up is refused outside demo mode", up.status === 400, String(up.status));
   const inn = await post("/api/auth/sign-in/email", { email: "someone@example.com", password: "correct-horse-battery" });
