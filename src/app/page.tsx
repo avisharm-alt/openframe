@@ -9,8 +9,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
   return (
     <>
       <section className="hero">
-        <h1>Find practice questions for your course</h1>
-        <p className="muted">OpenFrame is a free, open-source, student-run question bank. Search by course code, title or topic. Every question has an explanation for each option, and you don’t need an account to practise.</p>
+        <p className="eyebrow">Practice, made for students</p>
+        <h1>Understand more.<br />Practice with purpose.</h1>
+        <p className="muted">A free, student-run question bank for your courses. Explore questions by course or topic, learn from every explanation, and practise without an account.</p>
         <form role="search" className="search" action="/" method="get">
           <label htmlFor="q" className="sr-only">Search courses and topics</label>
           <input id="q" name="q" type="search" defaultValue={q} placeholder="e.g. DEMO-102, statistics, recursion" autoComplete="off" />
@@ -19,9 +20,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
       </section>
 
       {courses.length > 0 ? (
-        <section aria-labelledby="results-h">
-          <h2 id="results-h" className="sr-only">{q ? `Courses matching “${q}”` : "Courses"}</h2>
-          <p className="muted small" role="status">{q ? `${courses.length} course${courses.length === 1 ? "" : "s"} match “${q}”.` : `${courses.length} course${courses.length === 1 ? "" : "s"} available.`}</p>
+        <section className="course-section" aria-labelledby="results-h">
+          <div className="course-section-heading">
+            <h2 id="results-h">{q ? `Results for “${q}”` : "Explore courses"}</h2>
+            <p className="muted small" role="status">{q ? `${courses.length} course${courses.length === 1 ? "" : "s"} found` : `${courses.length} course${courses.length === 1 ? "" : "s"} available`}</p>
+          </div>
           <ul className="listing">
             {courses.map((c) => (
               <li key={c.id}>
