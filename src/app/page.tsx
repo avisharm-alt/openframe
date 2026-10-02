@@ -9,8 +9,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
   return (
     <>
       <section className="hero">
-        <h1>Find practice questions for your course</h1>
-        <p className="muted">OpenFrame is a free, open-source, student-run question bank. Search by course code, title or topic. Every question has an explanation for each option, and you don’t need an account to practise.</p>
+        <h1>Practice questions by course</h1>
+        <p className="muted">Browse student-contributed questions by course or topic. Each question includes explanations, and you can practise without an account.</p>
         <form role="search" className="search" action="/" method="get">
           <label htmlFor="q" className="sr-only">Search courses and topics</label>
           <input id="q" name="q" type="search" defaultValue={q} placeholder="e.g. DEMO-102, statistics, recursion" autoComplete="off" />
@@ -19,8 +19,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
       </section>
 
       {courses.length > 0 ? (
-        <section aria-labelledby="results-h">
-          <h2 id="results-h" className="sr-only">{q ? `Courses matching “${q}”` : "Courses"}</h2>
+        <section className="course-section" aria-labelledby="results-h">
+          <h2 id="results-h">{q ? `Courses matching “${q}”` : "Available courses"}</h2>
           <p className="muted small" role="status">{q ? `${courses.length} course${courses.length === 1 ? "" : "s"} match “${q}”.` : `${courses.length} course${courses.length === 1 ? "" : "s"} available.`}</p>
           <ul className="listing">
             {courses.map((c) => (
