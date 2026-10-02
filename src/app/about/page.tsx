@@ -2,7 +2,7 @@ import Link from "next/link";
 export const metadata = { title: "About" };
 export default function About() {
   return (
-    <div className="prose">
+    <div style={{ maxWidth: "44rem" }}>
       <h1>About OpenFrame</h1>
       <p>
         OpenFrame is a free, open-source, nonprofit-oriented, student-run question bank, starting at Western University. Students find original, student-contributed,

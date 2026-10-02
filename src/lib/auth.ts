@@ -1,14 +1,17 @@
+import crypto from "node:crypto";
 import { betterAuth } from "better-auth";
-import { getDb } from "./db";
 import { APIError } from "better-auth/api";
+import { getDb } from "./db";
 import { config } from "./config";
-import { emailPolicyError } from "./email-policy";
-import { sendEmail } from "./email";
+import { promoteConfiguredMaintainer } from "./bootstrap";
 
 /**
- * Better Auth (email + password, cookie sessions). The `role` column is server-controlled
- * (`input: false`): clients cannot set it through sign-up or update-user. Roles are granted
- * only by a maintainer with shell access via `npm run admin:grant`.
+ * Better Auth with cookie sessions.
+ * - Production sign-in is Google OAuth only (no passwords stored). Email+password exists only in demo mode.
+ * - Google's real name and photo are discarded at sign-in: every new account gets a random pseudonymous
+ *   display name that the user can change on /account.
+ * - The `role` column is server-controlled (`input: false`): clients cannot set it through any endpoint.
+ *   Roles are granted only by a maintainer with shell access via `npm run admin:grant`.
  */
 export function buildAuthOptions() {
   return {
@@ -16,48 +19,52 @@ export function buildAuthOptions() {
     baseURL: config.baseUrl,
     secret: config.authSecret,
     emailAndPassword: {
-      enabled: true,
+      enabled: config.passwordLoginEnabled,
       minPasswordLength: 10,
       maxPasswordLength: 128,
       autoSignIn: true,
-      requireEmailVerification: config.requireEmailVerification,
-      resetPasswordTokenExpiresIn: 60 * 60,
-      sendResetPassword: async ({ user, url }: { user: { email: string }; url: string }) => {
-        await sendEmail({
-          to: user.email,
-          subject: "Reset your OpenFrame password",
-          text: `Someone asked to reset the password for this OpenFrame account.\n\nIf it was you, open this link within one hour:\n${url}\n\nIf it wasn't you, ignore this email; your password has not changed.`,
-        });
-      },
+      requireEmailVerification: false,
     },
-    emailVerification: {
-      sendOnSignUp: true,
-      sendOnSignIn: true,
-      autoSignInAfterVerification: true,
-      expiresIn: 60 * 60 * 24,
-      sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string }) => {
-        await sendEmail({
-          to: user.email,
-          subject: "Confirm your email for OpenFrame",
-          text: `Welcome to OpenFrame. Confirm this email address to finish creating your account:\n${url}\n\nThe link expires in 24 hours. If you didn't sign up, ignore this email.`,
-        });
-      },
-    },
-    databaseHooks: {
-      user: {
-        create: {
-          // Single choke point for every account creation path (sign-up API, scripts).
-          before: async (user: { email: string }) => {
-            const problem = emailPolicyError(user.email, config.allowedEmailDomains);
-            if (problem) throw new APIError("BAD_REQUEST", { message: problem });
-            return { data: user };
+    socialProviders: config.googleEnabled
+      ? {
+          google: {
+            clientId: config.googleClientId,
+            clientSecret: config.googleClientSecret,
+            prompt: "select_account" as const,
+            // Data minimisation: keep neither the real name nor the profile picture.
+            mapProfileToUser: () => ({ name: randomDisplayName(), image: "" }),
           },
-        },
-      },
-    },
+        }
+      : {},
+    account: { encryptOAuthTokens: true },
     user: {
       additionalFields: {
         role: { type: "string" as const, required: false, defaultValue: "student", input: false },
+      },
+    },
+    databaseHooks: {
+      session: {
+        create: {
+          // Bootstrap maintainers from INITIAL_MAINTAINER_EMAILS (verified emails only).
+          before: async (session: Record<string, unknown> & { userId: string }) => {
+            promoteConfiguredMaintainer(session.userId);
+            return { data: session };
+          },
+        },
+      },
+      user: {
+        update: {
+          before: async (data: Record<string, unknown>) => {
+            if (typeof data.name === "string") {
+              const name = data.name.trim();
+              if (name.length < 2 || name.length > 40) {
+                throw new APIError("BAD_REQUEST", { message: "Display name must be 2 to 40 characters." });
+              }
+              return { data: { ...data, name } };
+            }
+            return { data };
+          },
+        },
       },
     },
     session: { expiresIn: 60 * 60 * 24 * 14, updateAge: 60 * 60 * 24 },
@@ -66,6 +73,7 @@ export function buildAuthOptions() {
       window: 60,
       max: 100,
       customRules: {
+        "/sign-in/social": { window: 60, max: 30 },
         "/sign-up/email": { window: 3600, max: config.signupLimitPerHour },
         "/sign-in/email": { window: 60, max: config.signinLimitPerMinute },
       },
@@ -80,9 +88,11 @@ export function buildAuthOptions() {
   };
 }
 
+export const randomDisplayName = () => `student-${crypto.randomInt(1000, 10000)}`;
+
 function make() {
-  if (config.isProd && !config.isBuild && config.requireEmailVerification && !config.smtpUrl && !config.demo) {
-    throw new Error("SMTP_URL must be set: email verification is required (ALLOWED_EMAIL_DOMAINS / REQUIRE_EMAIL_VERIFICATION).");
+  if (!!config.googleClientId !== !!config.googleClientSecret) {
+    throw new Error("Set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (or neither).");
   }
   return betterAuth({ ...buildAuthOptions(), database: getDb() });
 }
@@ -92,4 +102,9 @@ const g = globalThis as unknown as { __openframeAuth?: Auth };
 export function getAuth(): Auth {
   if (!g.__openframeAuth) g.__openframeAuth = make();
   return g.__openframeAuth;
+}
+
+/** Test helper: forget the cached instance so changed environment variables take effect. */
+export function resetAuthForTests() {
+  g.__openframeAuth = undefined;
 }

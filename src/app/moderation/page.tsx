@@ -38,7 +38,7 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
           <tbody>
             {items.map((q) => (
               <tr key={q.revisionId}>
-                <td className="nowrap">{new Date(q.submittedAt).toLocaleDateString("en-CA")}</td>
+                <td>{new Date(q.submittedAt).toLocaleDateString("en-CA")}</td>
                 <td>{q.stem.length > 100 ? q.stem.slice(0, 100) + "…" : q.stem}</td>
                 <td>{q.courseCode} · {q.topic}</td>
                 <td>
@@ -60,14 +60,14 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
     if (!rows.length) return <p className="muted">No course requests.</p>;
     return (
       <div className="table-wrap" tabIndex={0} role="region" aria-label="Table (scrollable)"><table><thead><tr><th scope="col">Date</th><th scope="col">Code</th><th scope="col">Title</th><th scope="col">Note</th></tr></thead>
-        <tbody>{rows.map((r) => <tr key={r.id}><td className="nowrap">{r.createdAt.slice(0, 10)}</td><td>{r.code}</td><td>{r.title}</td><td>{r.note}</td></tr>)}</tbody></table></div>
+        <tbody>{rows.map((r) => <tr key={r.id}><td>{r.createdAt.slice(0, 10)}</td><td>{r.code}</td><td>{r.title}</td><td>{r.note}</td></tr>)}</tbody></table></div>
     );
   }
   function Events() {
     const rows = listEvents(actor!) as { id: string; action: string; questionId: string | null; detail: string; createdAt: string; actorName: string | null }[];
     return (
       <div className="table-wrap" tabIndex={0} role="region" aria-label="Table (scrollable)"><table><thead><tr><th scope="col">When</th><th scope="col">Actor</th><th scope="col">Action</th><th scope="col">Question</th><th scope="col">Detail</th></tr></thead>
-        <tbody>{rows.map((r) => <tr key={r.id}><td className="nowrap">{r.createdAt.replace("T", " ").slice(0, 16)}</td><td>{r.actorName ?? "system"}</td><td>{r.action}</td><td className="small">{r.questionId?.slice(0, 8)}</td><td className="small">{r.detail === "{}" ? "" : r.detail}</td></tr>)}</tbody></table></div>
+        <tbody>{rows.map((r) => <tr key={r.id}><td>{r.createdAt.replace("T", " ").slice(0, 16)}</td><td>{r.actorName ?? "system"}</td><td>{r.action}</td><td className="small">{r.questionId?.slice(0, 8)}</td><td className="small">{r.detail === "{}" ? "" : r.detail}</td></tr>)}</tbody></table></div>
     );
   }
 }

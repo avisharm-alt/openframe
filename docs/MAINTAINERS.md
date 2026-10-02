@@ -19,12 +19,14 @@ npm run admin:grant -- someone@example.org student      # revoke
 
 Initial launch: the maintainer can review others' contributions. **Nobody can review their own submission, whatever their role**, so a maintainer's own questions need a second reviewer — grant the reviewer role to at least one other trusted student.
 
-## Accounts and email
+## Accounts
 
-- Sign-up is limited to the domains in `ALLOWED_EMAIL_DOMAINS` (planned: `uwo.ca`) and requires clicking an emailed link. `@uwo.ca` also covers staff and faculty; the project cannot tell students from staff by address.
-- `SMTP_URL`/`EMAIL_FROM` must point at a real provider account you control. Watch its sending limits and spam folder placement; a verification email that never arrives locks a student out.
-- If someone cannot get their email: check the provider log first. Do not hand-verify accounts without confirming identity another way (`UPDATE "user" SET emailVerified = 1 ...` is possible but defeats the control).
-- To create a maintainer/reviewer account whose address is outside the allowed domains, temporarily add that domain to `ALLOWED_EMAIL_DOMAINS`, let them sign up and verify, remove the domain, then `npm run admin:grant`.
+- Sign-in is Google OAuth only; there are no passwords and no email sending. Setup steps are in the README ("Google sign-in").
+- Anyone with a Google account can register, so you cannot assume users are Western students. Publication always needs a reviewer, one person can hold at most 10 pending submissions, and a person with several Google accounts can still only review others' work (roles are granted per account, by you).
+- New accounts get a random display name; people can change it on `/account`. Real names and photos from Google are discarded.
+- First maintainer without shell access: list your Google email in `INITIAL_MAINTAINER_EMAILS`; you are promoted at your next sign-in (verified emails only). It never demotes.
+- To make someone a reviewer: they sign in once, then `npm run admin:grant -- their@email reviewer`.
+- If Google sign-in breaks (expired consent screen, wrong redirect URI), guests can still browse and practise; fix the credentials and redeploy.
 
 ## Adding courses
 
@@ -79,7 +81,7 @@ Schedule it (cron/systemd timer) and copy backups off the machine. Backups conta
 
 - [ ] Owner confirms the content license (`docs/CONTENT-LICENSE.md`) and the contributor-facing wording.
 - [ ] `CONTENT_REMOVAL_CONTACT` and `SECURITY_CONTACT` point to real, monitored addresses; update `SECURITY.md` and `CODE_OF_CONDUCT.md`.
-- [ ] `ALLOWED_EMAIL_DOMAINS=uwo.ca` set and an SMTP account configured; a real sign-up → verify → sign-in → password-reset cycle tested end to end with a real inbox.
+- [ ] Google OAuth client created, consent screen published, redirect URI exact; a real sign-in tested end to end with a real Google account (first sign-in, sign-out, second sign-in, account deletion).
 - [ ] `AUTH_SECRET` set; HTTPS in front; `TRUST_PROXY=1` if behind a proxy; `OPENFRAME_DEMO` unset.
 - [ ] At least two people hold reviewer/maintainer roles.
 - [ ] Real courses/topics inserted and verified. No demo data in production.

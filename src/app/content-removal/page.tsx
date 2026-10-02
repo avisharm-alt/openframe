@@ -5,7 +5,7 @@ export default function Removal() {
   const contact = config.contentRemovalContact;
   const isLink = /^(https?:|mailto:)/i.test(contact);
   return (
-    <div className="prose">
+    <div style={{ maxWidth: "44rem" }}>
       <h1>Content removal</h1>
       <p>
         If something here should not be on OpenFrame — for example material copied or reconstructed from an actual university assessment, content you own, or an error — tell us.

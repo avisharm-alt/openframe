@@ -9,34 +9,38 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
   return (
     <>
       <section className="hero">
-        <div className="hero-copy">
-          <h1>Find practice questions for your course</h1>
-          <p className="lead">OpenFrame is a free, open-source, student-run question bank. Search by course code, title or topic. Every question has an explanation for each option, and you don’t need an account to practise.</p>
-          <form role="search" className="search" action="/" method="get">
-            <label htmlFor="q" className="sr-only">Search courses and topics</label>
-            <input id="q" name="q" type="search" defaultValue={q} placeholder="e.g. DEMO-102, statistics, recursion" autoComplete="off" />
+        <h1>Practice questions by course</h1>
+        <p className="muted">Browse student-contributed questions by course or topic. Each question includes explanations, and you can practise without an account.</p>
+        <form role="search" className="search" action="/" method="get">
+          <label htmlFor="q" className="search-label">Search courses and topics</label>
+          <div className="search-controls">
+            <input id="q" name="q" type="search" defaultValue={q} placeholder="Course code, title, or topic" autoComplete="off" />
             <button className="btn">Search</button>
-          </form>
-        </div>
+          </div>
+        </form>
       </section>
 
       {courses.length > 0 ? (
-        <section aria-labelledby="results-h">
-          <h2 id="results-h" className="sr-only">{q ? `Courses matching “${q}”` : "Courses"}</h2>
-          <p className="muted small" role="status">{q ? `${courses.length} course${courses.length === 1 ? "" : "s"} match “${q}”.` : `${courses.length} course${courses.length === 1 ? "" : "s"} available.`}</p>
-          <ul className="course-grid">
+        <section className="course-section" aria-labelledby="results-h">
+          <div className="course-section-heading">
+            <h2 id="results-h">{q ? `Courses matching “${q}”` : "Available courses"}</h2>
+            <p className="muted small" role="status">{q ? `${courses.length} course${courses.length === 1 ? "" : "s"} match “${q}”.` : `${courses.length} course${courses.length === 1 ? "" : "s"} available.`}</p>
+          </div>
+          <ul className="listing">
             {courses.map((c) => (
-              <li key={c.id} className="course-card">
-                <div className="title-row">
-                  <span className="title"><Link href={`/courses/${c.slug}`}>{c.code} · {c.title}</Link></span>
-                  {c.isDemo && <span className="badge demo">Demo course</span>}
+              <li key={c.id}>
+                <div className="course-details">
+                  <div className="course-title-row">
+                    <span className="title"><Link href={`/courses/${c.slug}`} aria-label={`${c.code} · ${c.title}`}><span className="course-code">{c.code}</span><span className="course-title">{c.title}</span></Link></span>
+                    {c.isDemo && <span className="badge demo">Demo course</span>}
+                  </div>
+                  <p className="small muted course-meta">{c.universityName} <span aria-hidden="true">/</span> {c.subject}</p>
+                  <p className="small course-counts">
+                    <span><b>{c.reviewedCount}</b> student-reviewed</span><span><b>{c.unreviewedCount}</b> unreviewed</span>
+                    {c.topicMatches.length > 0 && <span className="muted"> · topic match: {c.topicMatches.join(", ")}</span>}
+                  </p>
                 </div>
-                <p className="small muted">{c.universityName} · {c.subject}</p>
-                <p className="small counts">
-                  <b>{c.reviewedCount}</b> student-reviewed · <b>{c.unreviewedCount}</b> unreviewed
-                  {c.topicMatches.length > 0 && <span className="muted"> · topic match: {c.topicMatches.join(", ")}</span>}
-                </p>
-                <Link className="btn small secondary go" href={`/practice/setup?course=${c.slug}`}>Start practice</Link>
+                <Link className="course-action" href={`/practice/setup?course=${c.slug}`}>Start practice <span aria-hidden="true">→</span></Link>
               </li>
             ))}
           </ul>
@@ -54,13 +58,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
         </section>
       )}
 
-      <details id="request" className="request" open={courses.length === 0}>
+      <details id="request" style={{ marginTop: "2rem" }} open={courses.length === 0}>
         <summary>Don’t see your course? Request it</summary>
-        <div className="request-body">
+        <div style={{ marginTop: "0.6rem" }}>
           <CourseRequestForm initialCode={courses.length === 0 ? q : ""} />
         </div>
       </details>
-      <p className="muted small after-request">Or <Link href="/contribute">contribute questions</Link> for courses that already exist.</p>
+      <p className="muted small">Or <Link href="/contribute">contribute questions</Link> for courses that already exist.</p>
     </>
   );
 }
