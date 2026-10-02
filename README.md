@@ -19,6 +19,7 @@ OpenFrame is independent and is **not affiliated with or endorsed by any univers
 | Guided contribution editor with learner preview, drafts, revisions | `/contribute` |
 | Reports (anyone, rate limited) and content-removal route | question "Report a problem", `/content-removal` |
 | Moderation: queue, checklist review, reports, course requests, audit log, withdrawal | `/moderation` |
+| Course administration (maintainers): add/edit/archive courses, units and topics, paste an outline, turn course requests into courses | `/moderation?tab=courses` |
 | Policies: About, Guidelines, Academic integrity, Privacy, Content removal | footer links |
 
 ## Stack (and why)
@@ -78,8 +79,8 @@ In **demo mode** only (`OPENFRAME_DEMO=1`), email+password sign-in also exists s
 ## Checks
 
 ```bash
-npm run check          # eslint + tsc + vitest (29 tests)
-npm run e2e            # build, start on a throwaway DB, HTTP walkthrough (49 checks, across a demo server and a production-style server) + browser/axe check
+npm run check          # eslint + tsc + vitest (57 tests)
+npm run e2e            # build, start on a throwaway DB, HTTP walkthrough (63 checks on a demo server, 10 more on a production-style server) + browser/axe check
 SKIP_BROWSER=1 npm run e2e   # HTTP walkthrough only (what CI runs)
 ```
 
@@ -96,7 +97,7 @@ No separate database server (and no MongoDB) is needed: data lives in one SQLite
 ## Layout
 
 ```
-migrations/            plain SQL (001 = Better Auth schema, regenerate with npm run db:gen-auth-sql; 002 = app schema)
+migrations/            plain SQL (001 = Better Auth schema, regenerate with npm run db:gen-auth-sql; 002 = app schema; 003 = universities; 004 = course-request status)
 src/lib/services/      all business rules (catalog, practice, contributions, moderation, reports, account) — framework-free, unit tested
 src/lib/http.ts        route wrapper: request guard, auth level, JSON parsing, error mapping
 src/lib/guard.ts       rejects uploads / non-JSON bodies / oversized / cross-origin writes (also run from src/proxy.ts)

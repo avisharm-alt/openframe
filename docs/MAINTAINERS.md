@@ -28,9 +28,29 @@ Initial launch: the maintainer can review others' contributions. **Nobody can re
 - To make someone a reviewer: they sign in once, then `npm run admin:grant -- their@email reviewer`.
 - If Google sign-in breaks (expired consent screen, wrong redirect URI), guests can still browse and practise; fix the credentials and redeploy.
 
-## Adding courses
+## Adding and managing courses
 
-The schema is University → Course → Unit → Topic. There is no admin UI in the MVP: insert rows with SQL (or extend `scripts/`). Real course codes/titles/mappings must be verified; do not invent outlines, instructors or syllabi. `course.is_demo=1` marks demonstration courses. A university is only visible when `university.enabled = 1`. Review the "Request a course" entries in `/moderation?tab=requests`.
+The schema is University → Course → Unit → Topic. Maintainers manage the catalog in the browser at **Moderation → Courses** (`/moderation?tab=courses`); reviewers and students cannot. Every change is written to the audit log. Real course codes, titles, units and topics must be verified against an official source; do not invent outlines, instructors or syllabi. A university is only offered (and visible) when `university.enabled = 1`.
+
+- **New course:** choose the university, enter the code, title and subject, and optionally paste an outline. The course goes live immediately, with no questions. Each university can use a code once (case-insensitive, archived courses included). The public URL (`/courses/<slug>`) is generated from the code at creation and never changes, even if you later edit the code.
+- **Outline format:** one unit per line, with its topics on the lines below, each starting with `-`. Blank lines are ignored.
+
+  ```
+  Foundations
+  - Variables and types
+  - Expressions
+
+  Control flow
+  - Conditionals
+  - Loops
+  ```
+
+  The same box on a course's page appends more units later; a unit title that already exists is refused and nothing is added. Errors name the line.
+- **Units and topics:** add, rename, move up/down and delete from the course page. Learners pick topics from these lists when practising and contributing. A topic (or a unit containing one) that any question or revision uses can be **renamed but not deleted**, so no question is ever orphaned.
+- **Archive vs delete:** *Archive* hides a course from the directory, search, practice setup and new contributions, and keeps its questions; it can be restored. Practice sessions already in progress, and direct links or bookmarks to its questions, keep working: to take a question down, use *Withdraw*. *Delete* only works for a course that never had a question (for example, one created by mistake).
+- **Course requests:** `/moderation?tab=requests` lists open requests (Open / Added / Dismissed). *Create course* opens the form pre-filled from the request and marks it **added** when you create the course; *Dismiss* closes it without action and can be reopened.
+
+Demo courses (`course.is_demo=1`) come only from the demo seed; the UI cannot create them.
 
 ## Reviewing submissions (`/moderation`)
 
@@ -52,7 +72,7 @@ Edits to a published question create a new revision that goes back through revie
 
 ## Audit log
 
-`/moderation?tab=events` (maintainers) lists submissions, reviews, withdrawals, restores, role grants, report handling and account deletions. Entries hold no private reviewer notes and no personal data beyond the acting account reference.
+`/moderation?tab=events` (maintainers) lists submissions, reviews, withdrawals, restores, role grants, report handling, account deletions and every course-catalog change (courses, units, topics, requests). Entries hold no private reviewer notes and no personal data beyond the acting account reference.
 
 ## Data retention and deletion
 
@@ -84,6 +104,6 @@ Schedule it (cron/systemd timer) and copy backups off the machine. Backups conta
 - [ ] Google OAuth client created, consent screen published, redirect URI exact; a real sign-in tested end to end with a real Google account (first sign-in, sign-out, second sign-in, account deletion).
 - [ ] `AUTH_SECRET` set; HTTPS in front; `TRUST_PROXY=1` if behind a proxy; `OPENFRAME_DEMO` unset.
 - [ ] At least two people hold reviewer/maintainer roles.
-- [ ] Real courses/topics inserted and verified. No demo data in production.
+- [ ] Real courses/topics added (Moderation → Courses) and verified. No demo data in production.
 - [ ] Backup + restore rehearsed. Guest-session purge scheduled.
 - [ ] Privacy page reviewed against what you actually run (analytics, logs, proxy logs).

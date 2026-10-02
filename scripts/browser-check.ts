@@ -123,6 +123,119 @@ async function authedPages() {
   await browser.close();
 }
 
+async function maintainerPages() {
+  const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
+  const ctx = await browser.newContext({ viewport: { width: 1100, height: 900 }, bypassCSP: true });
+  const page = await ctx.newPage();
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  // window.prompt / window.confirm are native dialogs; each step below arms the answer it expects.
+  let nextPrompt: string | null = null;
+  page.on("dialog", (d) => (d.type() === "prompt" ? d.accept(nextPrompt ?? d.defaultValue()) : d.accept()));
+
+  await page.goto(BASE + "/auth/sign-in");
+  await page.getByLabel("Email").fill("demo-maintainer@example.test");
+  await page.getByLabel("Password").fill("demo-password-123");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForURL(BASE + "/");
+
+  await page.goto(BASE + "/moderation?tab=courses");
+  await page.getByRole("link", { name: "New course" }).waitFor();
+  log((await page.getByRole("link", { name: /DEMO-101/ }).count()) > 0, "[maintainer] course list shows the demo courses");
+  await axe(page, "[maintainer] course list");
+  await shot(page, "admin-courses");
+
+  // Create a course through the form (keyboard-friendly native controls), with an outline.
+  await page.getByRole("link", { name: "New course" }).click();
+  await page.getByRole("heading", { name: "New course" }).waitFor();
+  await axe(page, "[maintainer] new course form");
+  await page.locator("#nc-university").selectOption({ label: "University of Toronto" });
+  await page.locator("#nc-code").fill("BRW 100");
+  await page.locator("#nc-title").fill("Browser Test Course");
+  await page.locator("#nc-subject").fill("Testing");
+  await page.locator("#nc-outline").fill("Unit A\n- Topic 1\n- Topic 2");
+  await page.getByRole("button", { name: "Create course" }).click();
+  await page.waitForURL(/\/moderation\/courses\/[0-9a-f-]{36}$/);
+  await page.getByRole("heading", { name: /BRW 100/ }).waitFor();
+  log((await page.getByText("Topic 1").count()) > 0 && (await page.getByText("Topic 2").count()) > 0, "[maintainer] creating a course with an outline shows its units and topics");
+  await axe(page, "[maintainer] manage course page");
+  await shot(page, "admin-course");
+
+  // Add a topic, reorder it by keyboard (focus must stay on the control), rename, delete.
+  await page.getByLabel("New topic in Unit A").fill("Topic 3");
+  await page.getByRole("button", { name: "Add topic" }).click();
+  await page.getByRole("status").filter({ hasText: "Added the topic" }).waitFor();
+  const up = page.getByRole("button", { name: "Move topic Topic 3 up" });
+  await up.focus();
+  await page.keyboard.press("Enter");
+  // The status line appears as soon as the API call returns; wait for the refreshed list to show the new order.
+  await page.waitForFunction(() => document.querySelectorAll(".structure > li")[1]?.textContent?.includes("Topic 3"), undefined, { timeout: 10000 }).catch(() => {});
+  const order = await page.locator(".structure > li").allInnerTexts();
+  log(/Topic 1/.test(order[0]) && /Topic 3/.test(order[1]) && /Topic 2/.test(order[2]), `[maintainer] a topic can be moved up with the keyboard (${order.map((o) => o.split("\n")[0]).join(" | ")})`);
+  const focusId = await page.evaluate(() => document.activeElement?.id ?? "");
+  log(/^(up|down)-topic-/.test(focusId), `[maintainer] keyboard focus stays on the move control after the list refreshes (${focusId.slice(0, 14)}…)`);
+  nextPrompt = "Topic Three";
+  await page.getByRole("button", { name: "Rename topic Topic 3" }).click();
+  await page.getByRole("button", { name: "Move topic Topic Three up" }).waitFor();
+  log(true, "[maintainer] a topic can be renamed");
+  await page.getByRole("button", { name: "Delete topic Topic Three" }).click();
+  await page.getByRole("button", { name: "Move topic Topic Three up" }).waitFor({ state: "detached" });
+  log((await page.locator(".structure").getByText("Topic Three").count()) === 0, "[maintainer] a topic can be deleted after confirming");
+
+  // A duplicate is refused with a readable message.
+  await page.getByLabel("New topic in Unit A").fill("topic 1");
+  await page.getByRole("button", { name: "Add topic" }).click();
+  await page.getByRole("alert").filter({ hasText: "already has a topic" }).waitFor();
+  log(true, "[maintainer] duplicate topic is refused with a clear message");
+
+  // Archive hides the public page; restore brings it back.
+  const publicUrl = BASE + "/courses/brw-100";
+  log((await page.request.get(publicUrl)).status() === 200, "[maintainer] new course has a public page");
+  await page.getByRole("button", { name: "Archive course" }).click();
+  await page.getByRole("button", { name: "Restore course" }).waitFor();
+  log((await (await browser.newContext()).request.get(publicUrl)).status() === 404, "[maintainer] an archived course is no longer public");
+  await page.getByRole("button", { name: "Restore course" }).click();
+  await page.getByRole("button", { name: "Archive course" }).waitFor();
+
+  // Outline import on an existing course.
+  await page.locator("#oi-text").fill("Unit B\n- Topic 4");
+  await page.getByRole("button", { name: "Add to course" }).click();
+  await page.getByRole("status").filter({ hasText: "Added 1 unit and 1 topic" }).waitFor();
+  await axe(page, "[maintainer] manage course page (after edits)");
+
+  // Mobile layout of the editor: no horizontal page scroll.
+  await page.setViewportSize({ width: 375, height: 760 });
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
+  log(!overflow, "[maintainer] manage course page has no horizontal scroll at 375px");
+  await shot(page, "admin-course-mobile");
+  await page.setViewportSize({ width: 1100, height: 900 });
+
+  // Requests tab, then clean up by deleting the empty course.
+  await page.goto(BASE + "/moderation?tab=requests");
+  await page.getByRole("heading", { name: "Moderation" }).waitFor();
+  await axe(page, "[maintainer] course requests");
+  await page.goto(BASE + "/moderation?tab=courses");
+  await page.getByRole("link", { name: /BRW 100/ }).click();
+  await page.getByRole("button", { name: "Delete course" }).click();
+  await page.waitForURL(/tab=courses/);
+  log((await page.getByRole("link", { name: /BRW 100/ }).count()) === 0, "[maintainer] an empty course can be deleted");
+  log(errors.length === 0, `[maintainer] no page errors${errors.length ? ": " + errors.slice(0, 3).join(" | ") : ""}`);
+
+  // A reviewer can see the queue but not the maintainer-only course pages.
+  await ctx.clearCookies();
+  await page.goto(BASE + "/auth/sign-in");
+  await page.getByLabel("Email").fill("demo-reviewer@example.test");
+  await page.getByLabel("Password").fill("demo-password-123");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForURL(BASE + "/");
+  await page.goto(BASE + "/moderation/courses/new");
+  log((await page.getByText("Only maintainers can add courses").count()) > 0, "[reviewer] the new-course page is refused");
+  await page.goto(BASE + "/moderation");
+  const modTabs = page.getByRole("navigation", { name: "Moderation sections" });
+  log((await modTabs.getByRole("link", { name: "Course requests" }).count()) === 1 && (await modTabs.getByRole("link", { name: "Courses", exact: true }).count()) === 0, "[reviewer] sees the course-requests tab but is not offered the maintainer Courses tab");
+  await browser.close();
+}
+
 async function darkPass() {
   const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 900 }, bypassCSP: true, colorScheme: "dark" });
@@ -167,6 +280,7 @@ async function prodStyleSignIn() {
   await guestFlow(1100, 900, "desktop");
   await guestFlow(375, 760, "mobile");
   await authedPages();
+  await maintainerPages();
   await darkPass();
   console.log(failures ? `\n${failures} check(s) failed` : "\nAll browser checks passed");
   process.exit(failures ? 1 : 0);

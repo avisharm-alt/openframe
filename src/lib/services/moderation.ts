@@ -163,9 +163,21 @@ export function updateReport(actor: Actor, id: string, input: { state: string; n
   return { state: input.state };
 }
 
-export function listCourseRequests(actor: Actor) {
+export type CourseRequestRow = {
+  id: string; code: string; title: string; note: string; status: "open" | "added" | "dismissed";
+  universityName: string | null; courseId: string | null; courseSlug: string | null; createdAt: string;
+};
+
+/** Course requests, newest first. `status` filters (default: still open); "all" lists every request. */
+export function listCourseRequests(actor: Actor, status: "open" | "added" | "dismissed" | "all" = "open"): CourseRequestRow[] {
   requireReviewer(actor);
-  return getDb().prepare("SELECT cr.id, cr.code, cr.title, cr.note, u.name AS universityName, cr.created_at AS createdAt FROM course_request cr LEFT JOIN university u ON u.slug = cr.university_slug ORDER BY cr.created_at DESC LIMIT 200").all();
+  return getDb()
+    .prepare(
+      `SELECT cr.id, cr.code, cr.title, cr.note, cr.status, u.name AS universityName, cr.course_id AS courseId, c.slug AS courseSlug, cr.created_at AS createdAt
+       FROM course_request cr LEFT JOIN university u ON u.slug = cr.university_slug LEFT JOIN course c ON c.id = cr.course_id
+       WHERE (@status = 'all' OR cr.status = @status) ORDER BY cr.created_at DESC LIMIT 200`,
+    )
+    .all({ status }) as CourseRequestRow[];
 }
 
 export function listEvents(actor: Actor, questionId?: string) {

@@ -146,6 +146,48 @@ export const courseRequestSchema = z.strictObject({
   note: trimmed(1000).optional().default(""),
 });
 
+// --- Course administration (maintainers) ---
+
+/** Single-line text: trimmed, inner whitespace collapsed, required. */
+const line = (max: number) =>
+  z.string().trim().min(1, "This field is required.").max(max, `Use at most ${max} characters.`).transform((s) => s.replace(/\s+/g, " "));
+
+const courseCode = line(30).refine((s) => s.length >= 2 && /[a-z0-9]/i.test(s), "Enter the course code, for example CS 1026A.");
+
+export const courseCreateSchema = z.strictObject({
+  universitySlug: z.string().trim().min(1, "Choose a university.").max(80),
+  code: courseCode,
+  title: line(120),
+  subject: line(80),
+  description: trimmed(1000).optional().default(""),
+  outline: trimmed(10000).optional().default(""),
+  requestId: uuid.optional(),
+});
+
+export const courseUpdateSchema = z
+  .strictObject({
+    code: courseCode.optional(),
+    title: line(120).optional(),
+    subject: line(80).optional(),
+    description: trimmed(1000).optional(),
+    status: z.enum(["active", "archived"]).optional(),
+  })
+  .refine((o) => Object.keys(o).length > 0, "Nothing to update.");
+
+export const unitCreateSchema = z.strictObject({ title: line(120) });
+export const topicCreateSchema = z.strictObject({ title: line(160) });
+
+const eitherTitleOrMove = (o: { title?: string; move?: string }) => (o.title !== undefined) !== (o.move !== undefined);
+export const unitUpdateSchema = z
+  .strictObject({ title: line(120).optional(), move: z.enum(["up", "down"]).optional() })
+  .refine(eitherTitleOrMove, "Send either a new title or a move direction.");
+export const topicUpdateSchema = z
+  .strictObject({ title: line(160).optional(), move: z.enum(["up", "down"]).optional() })
+  .refine(eitherTitleOrMove, "Send either a new title or a move direction.");
+
+export const outlineSchema = z.strictObject({ text: z.string().trim().min(1, "Paste an outline first.").max(10000) });
+export const courseRequestStatusSchema = z.strictObject({ status: z.enum(["open", "dismissed"]) });
+
 export const sessionCreateSchema = z.strictObject({
   courseId: uuid.optional(),
   topicIds: z.array(uuid).max(100).optional(),

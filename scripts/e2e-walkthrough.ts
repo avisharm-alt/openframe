@@ -90,6 +90,56 @@ async function main() {
   check("student cannot open moderation API", (await author.c.req("GET", "/api/moderation/queue")).status === 403);
   check("anonymous cannot open moderation API", (await guest.req("GET", "/api/moderation/queue")).status === 401);
 
+  // --- course administration: maintainers only (roles come from the database, never from the client)
+  const courseBody = { universitySlug: "uoft", code: "E2E 100", title: "E2E Test Course", subject: "Testing", outline: "Unit One\n- Topic A\n- Topic B" };
+  check("student cannot use the course admin API", (await author.c.req("GET", "/api/moderation/courses")).status === 403 && (await author.c.req("POST", "/api/moderation/courses", courseBody)).status === 403);
+  check("reviewer cannot use the course admin API (maintainer only)", (await reviewer.c.req("GET", "/api/moderation/courses")).status === 403 && (await reviewer.c.req("POST", "/api/moderation/courses", courseBody)).status === 403);
+  check("anonymous cannot use the course admin API", (await guest.req("POST", "/api/moderation/courses", courseBody)).status === 401);
+  const mk = await bc2.req("POST", "/api/moderation/courses", courseBody);
+  check("maintainer creates a course with units and topics", mk.status === 200 && mk.json.slug === "e2e-100" && mk.json.units === 1 && mk.json.topics === 2, JSON.stringify(mk.json));
+  const newId = mk.json.id as string;
+  const livePub = (await guest.req("GET", `/api/courses/${mk.json.slug}`)).json as any;
+  check("the new course is public, under its university, with its topics in order", livePub.universitySlug === "uoft" && livePub.units[0].topics.map((t: any) => t.title).join() === "Topic A,Topic B", JSON.stringify(livePub));
+  check("a duplicate course code is refused (409)", (await bc2.req("POST", "/api/moderation/courses", { ...courseBody, code: "e2e 100" })).status === 409);
+  check("unknown fields (isDemo) are rejected (422)", (await bc2.req("POST", "/api/moderation/courses", { ...courseBody, code: "E2E 101", isDemo: true })).status === 422);
+  const badOutline = await bc2.req("POST", "/api/moderation/courses", { ...courseBody, code: "E2E 102", outline: "- topic with no unit" });
+  check("a bad outline is rejected with the line number and creates nothing", badOutline.status === 422 && /Line 1/.test(badOutline.json.error?.message ?? "") && !(((await bc2.req("GET", "/api/moderation/courses")).json.courses as any[]).some((c) => c.code === "E2E 102")), JSON.stringify(badOutline.json));
+  const xoAdmin = await fetch(BASE + "/api/moderation/courses", { method: "POST", headers: { Origin: "https://evil.example", Cookie: bc2.cookie, "Content-Type": "application/json" }, body: JSON.stringify({ ...courseBody, code: "E2E 103" }) });
+  check("cross-origin course admin request is rejected", xoAdmin.status === 403, String(xoAdmin.status));
+  const unitId = livePub.units[0].id as string;
+  const topicB = livePub.units[0].topics[1].id as string;
+  check("maintainer can add, rename and reorder topics", (await bc2.req("POST", `/api/moderation/units/${unitId}/topics`, { title: "Topic C" })).status === 200
+    && (await bc2.req("PATCH", `/api/moderation/topics/${topicB}`, { title: "Topic B2" })).status === 200
+    && (await bc2.req("PATCH", `/api/moderation/topics/${topicB}`, { move: "up" })).json.moved === true
+    && ((await guest.req("GET", `/api/courses/${mk.json.slug}`)).json as any).units[0].topics.map((t: any) => t.title).join() === "Topic B2,Topic A,Topic C");
+  check("a student cannot edit units or topics", (await author.c.req("PATCH", `/api/moderation/topics/${topicB}`, { title: "Hacked" })).status === 403 && (await author.c.req("DELETE", `/api/moderation/units/${unitId}`)).status === 403);
+  check("archiving hides the course from the public API; restoring brings it back",
+    (await bc2.req("PATCH", `/api/moderation/courses/${newId}`, { status: "archived" })).status === 200
+    && (await guest.req("GET", `/api/courses/${mk.json.slug}`)).status === 404
+    && !((await guest.req("GET", "/api/courses")).json.courses as any[]).some((c) => c.slug === mk.json.slug)
+    && (await bc2.req("PATCH", `/api/moderation/courses/${newId}`, { status: "active" })).status === 200
+    && (await guest.req("GET", `/api/courses/${mk.json.slug}`)).status === 200);
+  const auditActions = ((await bc2.req("GET", "/api/moderation/events")).json.events as any[]).map((e) => e.action);
+  check("course changes are written to the audit log", ["course_created", "topic_created", "topic_renamed", "course_archived", "course_restored"].every((a) => auditActions.includes(a)), auditActions.join());
+
+  // course requests: anyone files one, reviewers see it, only a maintainer acts on it
+  const filed = await guest.req("POST", "/api/course-requests", { universitySlug: "uoft", code: "E2E 200", title: "Requested", note: "please add" });
+  const openReqs = (await reviewer.c.req("GET", "/api/moderation/course-requests")).json.requests as any[];
+  const theRequest = openReqs.find((r) => r.id === filed.json.id);
+  check("a filed course request appears (open) for reviewers", filed.status === 200 && theRequest?.status === "open", JSON.stringify(openReqs));
+  check("a reviewer cannot dismiss or act on a request", (await reviewer.c.req("PATCH", `/api/moderation/course-requests/${filed.json.id}`, { status: "dismissed" })).status === 403);
+  const fromReq = await bc2.req("POST", "/api/moderation/courses", { ...courseBody, code: "E2E 200", title: "Requested", requestId: filed.json.id });
+  const addedReqs = (await reviewer.c.req("GET", "/api/moderation/course-requests?status=added")).json.requests as any[];
+  check("creating a course from a request marks it added and links the course",
+    fromReq.status === 200 && addedReqs.some((r) => r.id === filed.json.id && r.courseSlug === fromReq.json.slug)
+    && !((await reviewer.c.req("GET", "/api/moderation/course-requests")).json.requests as any[]).some((r) => r.id === filed.json.id));
+  check("a handled request cannot be used again (409)", (await bc2.req("POST", "/api/moderation/courses", { ...courseBody, code: "E2E 201", requestId: filed.json.id })).status === 409);
+
+  // clean up so later checks see only the demo catalog
+  check("courses without questions can be deleted", (await bc2.req("DELETE", `/api/moderation/courses/${newId}`)).status === 200 && (await bc2.req("DELETE", `/api/moderation/courses/${fromReq.json.id}`)).status === 200 && (await guest.req("GET", `/api/courses/${mk.json.slug}`)).status === 404);
+  const demoAdmin = ((await bc2.req("GET", "/api/moderation/courses")).json.courses as any[]).find((c) => c.slug === demo.slug);
+  check("a course that has questions cannot be deleted (409): archive it instead", (await bc2.req("DELETE", `/api/moderation/courses/${demoAdmin.id}`)).status === 409);
+
   // --- contribution
   const optIds = Array.from({ length: 4 }, () => crypto.randomUUID());
   const draft = {

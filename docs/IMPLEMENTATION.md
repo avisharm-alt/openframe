@@ -18,6 +18,7 @@
 - **Guest sessions** are server-side (needed for server scoring) and addressed by an unguessable UUID; the browser keeps a local list for history. Signed-in sessions are private to the user (404 for anyone else).
 - **No authentication via client roles.** Roles are a DB column on Better Auth's `user` table with `input:false`; changed only by `npm run admin:grant`.
 - **Uploads impossible by construction**: guard rejects multipart/non-JSON bodies at the proxy and again in every route wrapper; zod schemas are `strict` so extra fields (e.g. `attachment`) fail.
+- **Course catalog is maintainer-managed.** Course, unit and topic changes go through `src/lib/services/catalog-admin.ts` (maintainer role checked in the route wrapper and again in the service) and are audited. Course slugs are immutable public URLs; topics and units that questions or revisions use cannot be deleted; courses with questions are archived, not deleted. Course requests carry a status (`open` | `added` | `dismissed`, migration 004).
 - **Single-process assumptions**: in-memory rate limiter; SQLite file. Fine for the MVP; document before scaling out.
 - Demo mode is isolated: `OPENFRAME_DEMO=1` is required to seed, seeding refuses in production, and a banner is shown.
 
@@ -26,8 +27,8 @@
 Run on this branch (see README for commands):
 
 - `npm run lint`, `npm run typecheck`: clean.
-- `npm test`: 29 tests across practice, contribution/moderation (incl. queue cap), request-guard and auth-config suites.
-- `npm run e2e`: HTTP walkthrough — 41/41 checks on a demo server (contribution → independent review → publication → practice → report → withdrawal; uploads; CSRF origin; role escalation; cross-user access; display-name rules; account deletion) plus 8/8 on a second production-style server (password login refused, valid Google OAuth start with PKCE and exact redirect URI, basic scopes only), and browser check — keyboard-only guest practice at 1100px and 375px, axe-core clean (no violations on WCAG 2.0/2.1/2.2 A/AA rule tags) on home, course, setup, session, feedback, results, policy, auth, saved, contribute, moderation, review and editor pages.
+- `npm test`: 57 tests across practice, contribution/moderation (incl. queue cap), request-guard, auth-config, university-directory and course-administration suites.
+- `npm run e2e`: HTTP walkthrough — 63/63 checks on a demo server (contribution → independent review → publication → practice → report → withdrawal; uploads; CSRF origin; role escalation; cross-user access; display-name rules; account deletion; maintainer-only course administration incl. archive/delete rules, audit log and course-request handling) plus 10/10 on a second production-style server (password login refused, valid Google OAuth start with PKCE and exact redirect URI, basic scopes only), and browser check — keyboard-only guest practice at 1100px and 375px, axe-core clean (no violations on WCAG 2.0/2.1/2.2 A/AA rule tags) on home, course, setup, session, feedback, results, policy, auth, saved, contribute, moderation, review, editor and course-administration pages (a maintainer creates, reorders, renames, archives and deletes a course by keyboard and native dialogs).
 - `npm audit`: 0 known vulnerabilities at the time of writing.
 
 ### What these checks do not cover
@@ -41,8 +42,8 @@ Run on this branch (see README for commands):
 
 1. **Owner decisions:** confirm the content license and contributor wording (`docs/CONTENT-LICENSE.md`); decide on attribution defaults.
 2. **Real contacts:** configure `CONTENT_REMOVAL_CONTACT` and `SECURITY_CONTACT`; update `SECURITY.md` / `CODE_OF_CONDUCT.md`.
-3. **Reviewers and courses:** recruit at least two reviewers; insert verified real courses/topics (no admin UI yet).
+3. **Reviewers and courses:** recruit at least two reviewers; add verified real courses/topics in Moderation → Courses (maintainers only; see `docs/MAINTAINERS.md`).
 4. **Google OAuth:** create the OAuth client, publish the consent screen, and test a real sign-in (see README).
 5. **Hosting:** HTTPS, `AUTH_SECRET`, `TRUST_PROXY`, backups + restore drill, cron for guest-session purge; consider a shared rate-limit store if running more than one process.
 6. **Hardening:** nonce-based CSP (currently allows inline scripts for Next.js), password re-confirmation on account deletion, pagination for large queues, manual accessibility audit with assistive tech, legal/privacy review of the policy pages.
-7. **Nice-to-have next:** Docker image, admin UI for courses, reviewer notes search, per-session "report from pinned version" linkage.
+7. **Nice-to-have next:** Docker image, moving a topic between units, enabling/adding universities from the UI, reviewer notes search, per-session "report from pinned version" linkage.

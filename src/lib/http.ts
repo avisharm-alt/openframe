@@ -6,7 +6,7 @@ import { config } from "./config";
 import { ServiceError, forbidden } from "./errors";
 import { getAuth } from "./auth";
 import { getDb } from "./db";
-import { isReviewer, type Actor, type Role } from "./types";
+import { isMaintainer, isReviewer, type Actor, type Role } from "./types";
 
 export async function getActor(headers: Headers): Promise<Actor | null> {
   const s = await getAuth().api.getSession({ headers });
@@ -51,7 +51,7 @@ export function errorResponse(e: unknown) {
   return NextResponse.json({ error: { code: "internal", message: "Something went wrong." } }, { status: 500 });
 }
 
-type Level = "none" | "user" | "reviewer";
+type Level = "none" | "user" | "reviewer" | "maintainer";
 type Opts = { body?: boolean };
 type Ctx<P, A> = { req: Request; actor: A; params: P; body: unknown };
 
@@ -63,6 +63,7 @@ function build<P, A extends Actor | null>(level: Level, opts: Opts, fn: (ctx: Ct
       const actor = await getActor(req.headers);
       if (level !== "none" && !actor) throw new ServiceError(401, "unauthenticated", "Please sign in to continue.");
       if (level === "reviewer" && !isReviewer(actor)) throw forbidden("Reviewer access required.");
+      if (level === "maintainer" && !isMaintainer(actor)) throw forbidden("Maintainer access required.");
       let body: unknown = undefined;
       if (opts.body) {
         const text = await req.text();
@@ -91,3 +92,6 @@ export const userRoute = <P = Record<string, string>>(opts: Opts, fn: (ctx: Ctx<
 /** Requires reviewer or maintainer role (enforced server-side on every call). */
 export const reviewerRoute = <P = Record<string, string>>(opts: Opts, fn: (ctx: Ctx<P, Actor>) => Promise<unknown> | unknown) =>
   build<P, Actor>("reviewer", opts, fn);
+/** Requires the maintainer role (enforced server-side on every call). */
+export const maintainerRoute = <P = Record<string, string>>(opts: Opts, fn: (ctx: Ctx<P, Actor>) => Promise<unknown> | unknown) =>
+  build<P, Actor>("maintainer", opts, fn);
