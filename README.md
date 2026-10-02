@@ -25,7 +25,7 @@ OpenFrame is independent and is **not affiliated with or endorsed by Western Uni
 
 - **Next.js 16** (App Router) + **React 19** + **TypeScript** — mainstream, one deployable Node process.
 - **SQLite** via `better-sqlite3` — real relational persistence, plain-SQL migrations in `migrations/`, zero-ops backups (a single file), cheap for volunteer maintainers. The schema is multi-university; only Western is enabled in the UI.
-- **Better Auth** — maintained email+password auth with cookie sessions and built-in rate limiting. The `role` column is server-controlled and cannot be set by clients.
+- **Better Auth** — maintained auth library: **Google OAuth** sign-in, cookie sessions, built-in rate limiting. No passwords are stored in production. The `role` column is server-controlled and cannot be set by clients.
 - **Zod** for server-side validation; **react-markdown + KaTeX** for safe Markdown/maths (raw HTML, images and iframes disabled).
 - **Vitest** for tests; **Playwright (Chromium) + axe-core** for the browser/accessibility check.
 - Dependencies are pinned to exact versions in `package.json`.
@@ -59,28 +59,27 @@ All seeded questions are labelled **Demo** and **Unreviewed**. By default, pract
 
 ### Environment variables
 
-See `.env.example`. Key ones: `BASE_URL`, `AUTH_SECRET` (required in production, ≥32 chars), `DATABASE_PATH`, `OPENFRAME_DEMO`, `TRUST_PROXY` (set to 1 behind a reverse proxy so rate limits see client IPs), `CONTENT_REMOVAL_CONTACT`, `SECURITY_CONTACT`, `ALLOWED_EMAIL_DOMAINS` (e.g. `uwo.ca`), `SMTP_URL` + `EMAIL_FROM`.
+See `.env.example`. Key ones: `BASE_URL`, `AUTH_SECRET` (required in production, ≥32 chars), `DATABASE_PATH`, `OPENFRAME_DEMO`, `TRUST_PROXY` (set to 1 behind a reverse proxy so rate limits see client IPs), `CONTENT_REMOVAL_CONTACT`, `SECURITY_CONTACT`, `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`.
 
-### Accounts: @uwo.ca only, with verified email
+### Google sign-in
 
-Set `ALLOWED_EMAIL_DOMAINS=uwo.ca`. Then sign-up accepts only addresses on exactly that domain (look-alikes such as `uwo.ca.evil.com` and `+alias` addresses are refused), and **every account must verify its email** through a link before it can sign in, because a domain check alone proves nothing. Password reset uses the same email channel. You need an SMTP account for this (`SMTP_URL`); production refuses to start without one. Notes: `@uwo.ca` addresses are issued to staff and faculty as well as students, so the domain cannot tell them apart; and a maintainer without a `@uwo.ca` address must temporarily add their own domain to the list to create their account, then run `npm run admin:grant`. Guests can still browse and practise without any account.
+Production sign-in is **Google only**: there are no passwords to store, reset or email. Anyone with a Google account can sign in; guests can still browse and practise without one.
 
-In demo mode (`OPENFRAME_DEMO=1`, no `SMTP_URL`) emails are not sent: they are logged and appended to `data/outbox.jsonl` so you can open the links locally.
+One-time setup (about 10 minutes, free):
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/), create a project, then **APIs & Services → OAuth consent screen**: user type *External*, app name "OpenFrame", add your support email and a link to your privacy page. Under scopes keep only the defaults (`openid`, `email`, `profile`). Do **not** add sensitive scopes.
+2. **Credentials → Create credentials → OAuth client ID → Web application.** Under *Authorized redirect URIs* add exactly `https://YOUR-SITE/api/auth/callback/google` (and `http://localhost:3000/api/auth/callback/google` for local testing).
+3. Put the client ID and secret in `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (keep the secret out of git).
+4. While the consent screen is in **Testing**, only test users you list can sign in. Click **Publish app** to open it to everyone. With only basic scopes Google normally doesn't require a verification review, but check Google's current rules for your project.
 
-### Production
+What OpenFrame keeps from Google: your email address and Google's account id. It deliberately discards your real name and photo, gives you a random display name (`student-1234`) that you can change on `/account`, and stores Google's tokens encrypted. Because anyone with a Google account can register, each person may have at most 10 submissions waiting in the review queue, and publication always needs a human reviewer.
 
-```bash
-npm ci && npm run build
-AUTH_SECRET=... BASE_URL=https://your.site DATABASE_PATH=/var/lib/openframe/openframe.db TRUST_PROXY=1 npm start
-```
-
-Migrations are applied automatically the first time the database is opened (and by `npm run db:migrate`). Production starts **empty**; there is no seed. Put the app behind HTTPS (cookies are `Secure` in production). See `docs/MAINTAINERS.md` for roles, reviews, removals, backups and restoration.
+In **demo mode** only (`OPENFRAME_DEMO=1`), email+password sign-in also exists so the seeded demo accounts and automated tests work without Google. It is disabled outside demo mode.
 
 ## Checks
 
 ```bash
-npm run check          # eslint + tsc + vitest (27 tests)
-npm run e2e            # build, start on a throwaway DB, HTTP walkthrough (52 checks) + browser/axe check
+npm run check          # eslint + tsc + vitest (29 tests)
+npm run e2e            # build, start on a throwaway DB, HTTP walkthrough (49 checks, across a demo server and a production-style server) + browser/axe check
 SKIP_BROWSER=1 npm run e2e   # HTTP walkthrough only (what CI runs)
 ```
 

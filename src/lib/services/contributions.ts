@@ -151,12 +151,19 @@ export function revise(actor: Actor, qid: string) {
   return { id: qid, revisionId: rid };
 }
 
+/** Anyone with a Google account can sign up, so cap how many submissions one person can park in the review queue. */
+export const MAX_PENDING_PER_AUTHOR = 10;
+
 export function submit(actor: Actor, qid: string, attested: true) {
   const db = getDb();
   if (attested !== true) throw invalid("You must accept the originality and permission statement.");
   const q = ownQuestion(db, actor, qid);
   const r = latest(db, qid);
   if (r.state !== "draft") throw conflict("not_draft", "Only drafts can be submitted.");
+  const pending = (db.prepare("SELECT COUNT(*) AS n FROM question_revision WHERE author_id = ? AND state = 'pending'").get(actor.id) as { n: number }).n;
+  if (pending >= MAX_PENDING_PER_AUTHOR) {
+    throw new ServiceError(429, "too_many_pending", `You already have ${pending} submissions waiting for review. Please wait for some to be reviewed before submitting more.`);
+  }
   const d = readDraft(db, q, r);
   assertTarget(db, q.course_id, r.topic_id);
   const { errors, warnings } = structuralCheck(d);

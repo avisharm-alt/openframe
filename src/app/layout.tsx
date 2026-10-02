@@ -44,10 +44,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <SignOutButton />
                 </>
               ) : (
-                <>
-                  <Link href="/auth/sign-in">Sign in</Link>
-                  <Link className="btn small" href="/auth/sign-up">Create account</Link>
-                </>
+                <Link className="btn small" href="/auth/sign-in">Sign in</Link>
               )}
             </div>
           </div>

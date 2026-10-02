@@ -99,7 +99,7 @@ async function authedPages() {
   const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 900 }, bypassCSP: true });
   const page = await ctx.newPage();
-  for (const p of ["/about", "/guidelines", "/academic-integrity", "/privacy", "/content-removal", "/auth/sign-in", "/auth/sign-up", "/auth/forgot-password", "/auth/reset-password?token=abc", "/saved", "/contribute"]) {
+  for (const p of ["/about", "/guidelines", "/academic-integrity", "/privacy", "/content-removal", "/auth/sign-in", "/saved", "/contribute"]) {
     await page.goto(BASE + p);
     await axe(page, p);
   }
@@ -145,7 +145,25 @@ async function darkPass() {
   await browser.close();
 }
 
+async function prodStyleSignIn() {
+  const url = process.env.PROD_URL;
+  if (!url) return;
+  const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
+  for (const scheme of ["light", "dark"] as const) {
+    const ctx = await browser.newContext({ viewport: { width: 1100, height: 800 }, bypassCSP: true, colorScheme: scheme });
+    const page = await ctx.newPage();
+    await page.goto(url + "/auth/sign-in");
+    log(await page.getByRole("button", { name: "Continue with Google" }).isVisible(), `[prod-style ${scheme}] sign-in shows the Google button`);
+    log((await page.locator('input[type="password"]').count()) === 0, `[prod-style ${scheme}] no password field`);
+    await axe(page, `[prod-style ${scheme}] sign-in`);
+    await shot(page, `signin-${scheme}`);
+    await ctx.close();
+  }
+  await browser.close();
+}
+
 (async () => {
+  await prodStyleSignIn();
   await guestFlow(1100, 900, "desktop");
   await guestFlow(375, 760, "mobile");
   await authedPages();

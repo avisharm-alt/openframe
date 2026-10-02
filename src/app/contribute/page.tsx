@@ -24,7 +24,7 @@ export default async function Contribute() {
         Never submit questions from real exams, quizzes or tests, and never upload files — the form accepts structured text only.
       </p>
       {!actor ? (
-        <div className="notice" role="note"><Link href="/auth/sign-in">Sign in</Link> or <Link href="/auth/sign-up">create an account</Link> to draft and submit questions.</div>
+        <div className="notice" role="note"><Link href="/auth/sign-in">Sign in</Link> to draft and submit questions.</div>
       ) : (
         <>
           <p><Link className="btn" href="/contribute/new">Write a new question</Link></p>

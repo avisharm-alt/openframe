@@ -26,15 +26,15 @@
 Run on this branch (see README for commands):
 
 - `npm run lint`, `npm run typecheck`: clean.
-- `npm test`: 27 tests across practice, contribution/moderation, request-guard and email-policy suites.
-- `npm run e2e`: HTTP walkthrough — 52/52 checks (domain allow-list, unverified sign-in blocked, verification link, password reset incl. token reuse; contribution → independent review → publication → practice → report → withdrawal; uploads; CSRF origin; role escalation; cross-user access; account deletion), and browser check — keyboard-only guest practice at 1100px and 375px, axe-core clean (no violations on WCAG 2.0/2.1/2.2 A/AA rule tags) on home, course, setup, session, feedback, results, policy, auth, saved, contribute, moderation, review and editor pages.
+- `npm test`: 29 tests across practice, contribution/moderation (incl. queue cap), request-guard and auth-config suites.
+- `npm run e2e`: HTTP walkthrough — 41/41 checks on a demo server (contribution → independent review → publication → practice → report → withdrawal; uploads; CSRF origin; role escalation; cross-user access; display-name rules; account deletion) plus 8/8 on a second production-style server (password login refused, valid Google OAuth start with PKCE and exact redirect URI, basic scopes only), and browser check — keyboard-only guest practice at 1100px and 375px, axe-core clean (no violations on WCAG 2.0/2.1/2.2 A/AA rule tags) on home, course, setup, session, feedback, results, policy, auth, saved, contribute, moderation, review and editor pages.
 - `npm audit`: 0 known vulnerabilities at the time of writing.
 
 ### What these checks do not cover
 
 - No manual screen-reader (NVDA/VoiceOver) or 200–400% zoom testing; axe finds only a subset of WCAG issues.
 - The e2e uses a throwaway SQLite DB and the demo seed; the **demo accounts and demo content are substitutes** for real users/content, not functioning production integrations.
-- Better Auth runs for real (sign-up, sessions, rate limiting, verification and reset flows), but in the e2e **email is a demo substitute**: messages are written to a local file instead of being sent over SMTP. The SMTP path (nodemailer) is configured but has **not** been exercised against a real provider.
+- **Google sign-in has not been exercised end to end.** The checks prove our side (the authorize URL, redirect URI, PKCE/state, scopes, refusal of password login, pseudonymisation mapping). The step where a real Google account approves and returns to `/api/auth/callback/google` needs real Google credentials and has not been run. Demo mode uses password login as a substitute.
 - No load testing.
 
 ## Remaining launch requirements (genuine)
@@ -42,7 +42,7 @@ Run on this branch (see README for commands):
 1. **Owner decisions:** confirm the content license and contributor wording (`docs/CONTENT-LICENSE.md`); decide on attribution defaults.
 2. **Real contacts:** configure `CONTENT_REMOVAL_CONTACT` and `SECURITY_CONTACT`; update `SECURITY.md` / `CODE_OF_CONDUCT.md`.
 3. **Reviewers and courses:** recruit at least two reviewers; insert verified real courses/topics (no admin UI yet).
-4. **Email:** create an SMTP account (`SMTP_URL`, `EMAIL_FROM`) and test verification + reset with a real @uwo.ca inbox. Know that `@uwo.ca` includes staff/faculty.
+4. **Google OAuth:** create the OAuth client, publish the consent screen, and test a real sign-in (see README).
 5. **Hosting:** HTTPS, `AUTH_SECRET`, `TRUST_PROXY`, backups + restore drill, cron for guest-session purge; consider a shared rate-limit store if running more than one process.
-6. **Hardening:** nonce-based CSP (currently allows inline scripts for Next.js), password re-confirmation on account deletion, per-email (not just per-IP) throttling of verification/reset emails, pagination for large queues, manual accessibility audit with assistive tech, legal/privacy review of the policy pages.
+6. **Hardening:** nonce-based CSP (currently allows inline scripts for Next.js), password re-confirmation on account deletion, pagination for large queues, manual accessibility audit with assistive tech, legal/privacy review of the policy pages.
 7. **Nice-to-have next:** Docker image, admin UI for courses, reviewer notes search, per-session "report from pinned version" linkage.

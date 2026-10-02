@@ -11,6 +11,6 @@ When you report, please include affected URL/endpoint, steps to reproduce and im
 - Authorisation is enforced server-side in `src/lib/services/*` and `src/lib/http.ts`. Roles live in the database and can only be changed with shell access (`npm run admin:grant`).
 - All `/api` writes: JSON only (uploads are rejected with 415), 100 KB body cap, same-origin check, SameSite=Lax httpOnly session cookie.
 - Contributed Markdown cannot contain raw HTML, scripts or images; links are limited to http(s) and are never fetched. CSP additionally blocks remote images/frames.
-- Accounts: optional domain allow-list (`ALLOWED_EMAIL_DOMAINS`) enforced in a database hook for every creation path; email verification required whenever it is set; `+alias` addresses refused so one mailbox is one account.
+- Accounts: Google OAuth only in production (state + PKCE handled by Better Auth); password login exists only in demo mode. Real names/photos from Google are discarded; OAuth tokens are encrypted at rest. At most 10 pending submissions per author.
 - Rate limits: Better Auth's limiter for sign-in/sign-up; an in-memory limiter for sessions, submissions, reports and course requests (single-process only).
 - Known hardening gaps: CSP still allows inline scripts (Next.js inline bootstrap; nonce-based CSP is future work); account deletion does not re-ask for the password.

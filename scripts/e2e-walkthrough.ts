@@ -6,7 +6,6 @@
 //
 // The server must share DATABASE_PATH with this script (it grants the reviewer role directly in the
 // database, exactly like `npm run admin:grant` does).
-import fs from "node:fs";
 import { getDb } from "../src/lib/db";
 
 const BASE = process.env.BASE_URL || "http://localhost:3100";
@@ -36,33 +35,13 @@ class Client {
   }
 }
 
-const OUTBOX = process.env.EMAIL_OUTBOX_PATH || "./data/outbox.jsonl";
-/** Demo substitute for real email: the server appends outgoing mail to a local file. */
-function lastMailTo(email: string): { subject: string; text: string } | null {
-  if (!fs.existsSync(OUTBOX)) return null;
-  const lines = fs.readFileSync(OUTBOX, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
-  return [...lines].reverse().find((m) => m.to === email) ?? null;
-}
-const linkIn = (m: { text: string }) => m.text.match(/https?:\/\/\S+/)![0];
-
-async function followLink(c: Client, url: string) {
-  const res = await fetch(url, { redirect: "manual", headers: { Origin: BASE } });
-  const set = res.headers.getSetCookie?.() ?? [];
-  if (set.length) c.cookie = set.map((x) => x.split(";")[0]).join("; ");
-  return res;
-}
-
 async function signUp(name: string) {
+  // Demo mode only: password sign-up. Production uses Google (see scripts/prod-config-check.ts).
   const c = new Client();
   const email = `${name}-${Date.now()}@example.test`;
-  const r = await c.req("POST", "/api/auth/sign-up/email", { name, email, password: "correct-horse-battery", callbackURL: "/" });
+  const r = await c.req("POST", "/api/auth/sign-up/email", { name, email, password: "correct-horse-battery" });
   if (r.status !== 200) throw new Error(`sign-up failed: ${r.status} ${JSON.stringify(r.json)}`);
-  const mail = lastMailTo(email);
-  if (!mail) throw new Error("no verification email was produced");
-  await followLink(c, linkIn(mail)); // verifies the address and signs in
-  const me = (await c.req("GET", "/api/me")).json as any;
-  if (!me.user) throw new Error("verification link did not sign the user in");
-  return { c, email, id: me.user.id as string };
+  return { c, email, id: r.json.user.id as string };
 }
 const grant = (id: string, role: string) => getDb().prepare('UPDATE "user" SET role = ? WHERE id = ?').run(role, id);
 
@@ -78,43 +57,6 @@ async function main() {
   const topicSearch = (await guest.req("GET", "/api/courses?q=recursion")).json.courses as any[];
   check("search by topic finds courses", topicSearch.some((c) => c.code === "DEMO-101"));
 
-  // --- account policy: domain allow-list + verified email + password reset
-  const domainOk = process.env.ALLOWED_EMAIL_DOMAINS || "";
-  if (domainOk) {
-    const tryUp = (email: string) => new Client().req("POST", "/api/auth/sign-up/email", { name: "x", email, password: "correct-horse-battery" });
-    const g = await tryUp(`someone-${Date.now()}@gmail.com`);
-    check("sign-up outside the allowed domain is rejected", g.status === 400 && /limited to/.test(JSON.stringify(g.json)), JSON.stringify(g.json));
-    const look = await tryUp(`someone-${Date.now()}@${domainOk.split(",")[0]}.evil.com`);
-    check("look-alike domain is rejected", look.status === 400, JSON.stringify(look.json));
-    const plus = await tryUp(`someone+alias-${Date.now()}@${domainOk.split(",")[0]}`);
-    check("+alias addresses are rejected", plus.status === 400, JSON.stringify(plus.json));
-    const email = `pending-${Date.now()}@${domainOk.split(",")[0]}`;
-    const okc = new Client();
-    const up = await okc.req("POST", "/api/auth/sign-up/email", { name: "pending", email, password: "correct-horse-battery", callbackURL: "/" });
-    check("allowed-domain sign-up succeeds but does not sign the user in", up.status === 200 && !okc.cookie.includes("session_token"), JSON.stringify(up.json) + okc.cookie.slice(0, 40));
-    const preSign = await new Client().req("POST", "/api/auth/sign-in/email", { email, password: "correct-horse-battery" });
-    check("unverified email cannot sign in", preSign.status === 403, JSON.stringify(preSign.json));
-    const verifyMail = lastMailTo(email);
-    check("a verification email is sent", !!verifyMail && /verify-email/.test(verifyMail.text));
-    const vc = new Client();
-    await followLink(vc, linkIn(verifyMail!));
-    check("verification link verifies and signs in", (await vc.req("GET", "/api/me")).json.user?.name === "pending");
-
-    await new Client().req("POST", "/api/auth/request-password-reset", { email, redirectTo: "/auth/reset-password" });
-    const resetMail = lastMailTo(email)!;
-    check("password reset email is sent", /reset/i.test(resetMail.subject));
-    const hop = await fetch(linkIn(resetMail), { redirect: "manual", headers: { Origin: BASE } });
-    const token = new URL(hop.headers.get("location")!, BASE).searchParams.get("token");
-    check("reset link redirects to the reset page with a token", !!token, hop.headers.get("location") ?? "");
-    const rs = await new Client().req("POST", "/api/auth/reset-password", { newPassword: "a-brand-new-passphrase", token });
-    check("password can be reset with the token", rs.status === 200, JSON.stringify(rs.json));
-    const oldPw = await new Client().req("POST", "/api/auth/sign-in/email", { email, password: "correct-horse-battery" });
-    const newPw = await new Client().req("POST", "/api/auth/sign-in/email", { email, password: "a-brand-new-passphrase" });
-    check("old password stops working and new one works", oldPw.status === 401 && newPw.status === 200, `${oldPw.status}/${newPw.status}`);
-    const reuse = await new Client().req("POST", "/api/auth/reset-password", { newPassword: "another-passphrase-123", token });
-    check("reset token cannot be reused", reuse.status >= 400, String(reuse.status));
-  }
-
   // --- accounts
   const author = await signUp("author");
   const reviewer = await signUp("reviewer");
@@ -128,6 +70,10 @@ async function main() {
   const su = await new Client().req("POST", "/api/auth/sign-up/email", { name: "sneaky", email: `sneaky-${Date.now()}@example.test`, password: "correct-horse-battery", role: "maintainer" });
   const sneakyRole = getDb().prepare('SELECT role FROM "user" WHERE id = ?').get(su.json.user?.id) as { role: string } | undefined;
   check("sign-up cannot set a role", sneakyRole?.role === "student", JSON.stringify(sneakyRole));
+  const dn = await author.c.req("POST", "/api/auth/update-user", { name: "Quiet Otter" });
+  const dnBad = await author.c.req("POST", "/api/auth/update-user", { name: "x" });
+  const dnLong = await author.c.req("POST", "/api/auth/update-user", { name: "y".repeat(80) });
+  check("users can change their display name; invalid names are rejected", dn.status === 200 && dnBad.status >= 400 && dnLong.status >= 400 && (await author.c.req("GET", "/api/me")).json.user?.name === "Quiet Otter", `${dn.status}/${dnBad.status}/${dnLong.status}`);
   check("student cannot open moderation API", (await author.c.req("GET", "/api/moderation/queue")).status === 403);
   check("anonymous cannot open moderation API", (await guest.req("GET", "/api/moderation/queue")).status === 401);
 

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { freshDb, makeUser, seeded, validDraft, publishNew, ALL_CHECKS } from "./helpers";
-import { createDraft, updateDraft, submit, revise, getMine, listMine, withdrawOwn } from "@/lib/services/contributions";
+import { createDraft, updateDraft, submit, revise, getMine, listMine, withdrawOwn, MAX_PENDING_PER_AUTHOR } from "@/lib/services/contributions";
 import { reviewRevision, queue, withdrawQuestion, restoreQuestion, listReports, listEvents, updateReport } from "@/lib/services/moderation";
 import { createSession, getSessionState, answerQuestion } from "@/lib/services/practice";
 import { createReport } from "@/lib/services/reports";
@@ -73,6 +73,21 @@ describe("submission validation", () => {
     const rev = makeUser(db, "Reviewer", "reviewer");
     const item = queue(rev).find((q) => q.questionId === id)!;
     expect(JSON.stringify(item.flags)).toContain("assessment_keywords");
+  });
+});
+
+describe("queue flooding", () => {
+  it("caps pending submissions per author", () => {
+    const author = makeUser(db, "Spammer");
+    for (let i = 0; i < MAX_PENDING_PER_AUTHOR; i++) {
+      const { id } = createDraft(author, validDraft(...target(), { stem: `Question number ${i}: which structure repeats steps while a condition holds true?` }));
+      submit(author, id, true);
+    }
+    const extra = createDraft(author, validDraft(...target()));
+    expect(() => submit(author, extra.id, true)).toThrow(/waiting for review/);
+    // a different author is unaffected
+    const other = makeUser(db, "Other");
+    expect(submit(other, createDraft(other, validDraft(...target())).id, true).state).toBe("pending_review");
   });
 });
 

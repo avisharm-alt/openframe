@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 
 export function SignOutButton() {
@@ -20,35 +19,52 @@ export function SignOutButton() {
   );
 }
 
-const domainText = (d: string[]) => d.map((x) => `@${x}`).join(" or ");
+export function GoogleButton() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div>
+      <button
+        className="btn"
+        style={{ fontSize: "1rem", padding: "0.55rem 1.4rem" }}
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError(null);
+          // On success the browser is redirected to Google; on failure we stay here.
+          const res = await authClient.signIn.social({
+            provider: "google",
+            callbackURL: "/",
+            newUserCallbackURL: "/account?welcome=1",
+            errorCallbackURL: "/auth/sign-in?error=oauth",
+          });
+          if (res?.error) {
+            setError(res.error.status === 429 ? "Too many attempts. Please wait a minute and try again." : "Could not start Google sign-in. Please try again.");
+            setBusy(false);
+          }
+        }}
+      >
+        {busy ? "Redirecting to Google…" : "Continue with Google"}
+      </button>
+      {error && <p role="alert" className="field-error">{error}</p>}
+    </div>
+  );
+}
 
-export function AuthForm({ mode, allowedDomains }: { mode: "sign-in" | "sign-up"; allowedDomains: string[] }) {
+/** Demo mode only: email+password so the seeded demo accounts and automated tests can sign in without Google. */
+export function DemoPasswordForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [sent, setSent] = useState<string | null>(null);
-  const signUp = mode === "sign-up";
-  const restricted = allowedDomains.length > 0;
-
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     const f = new FormData(e.currentTarget);
-    const email = String(f.get("email")).trim();
-    const password = String(f.get("password"));
     setBusy(true);
     try {
-      const res = signUp
-        ? await authClient.signUp.email({ email, password, name: String(f.get("name") || "Anonymous student").trim(), callbackURL: "/" })
-        : await authClient.signIn.email({ email, password });
+      const res = await authClient.signIn.email({ email: String(f.get("email")).trim(), password: String(f.get("password")) });
       if (res.error) {
-        if (res.error.status === 429) setError("Too many attempts. Please wait and try again.");
-        else if (res.error.status === 403) { setSent(email); setError(null); }
-        else setError(res.error.message || "That did not work. Check your details and try again.");
-        return;
-      }
-      if (signUp && restricted) {
-        setSent(email);
+        setError(res.error.status === 429 ? "Too many attempts. Please wait and try again." : "That email and password did not match.");
         return;
       }
       router.push("/");
@@ -59,87 +75,40 @@ export function AuthForm({ mode, allowedDomains }: { mode: "sign-in" | "sign-up"
       setBusy(false);
     }
   }
-
-  if (sent) {
-    return (
-      <div className="notice good" role="status">
-        <p><b>Check your email.</b> We sent a confirmation link to <b>{sent}</b>. Open it to finish {signUp ? "creating your account" : "signing in"}. The link expires in 24 hours.</p>
-        <p className="small">Nothing there? Check spam, then <Link href="/auth/sign-in">try signing in</Link> to get a fresh link.</p>
-      </div>
-    );
-  }
-
   return (
-    <form onSubmit={onSubmit} className="card" aria-describedby={error ? "auth-error" : undefined}>
-      {restricted && <p className="notice" role="note" style={{ marginTop: 0 }}>For now, accounts are limited to {domainText(allowedDomains)} email addresses. Browsing and practising never need an account.</p>}
-      {signUp && (
-        <>
-          <label htmlFor="name">Display name (a pseudonym is fine)</label>
-          <input id="name" name="name" type="text" required maxLength={40} autoComplete="nickname" />
-          <span className="help">Shown only if you choose public attribution on a contribution. Do not use your student number.</span>
-        </>
-      )}
-      <label htmlFor="email">{restricted ? `University email (${domainText(allowedDomains)})` : "Email"}</label>
-      <input id="email" name="email" type="email" required autoComplete="email" placeholder={restricted ? `username@${allowedDomains[0]}` : undefined} />
-      <label htmlFor="password">Password {signUp && <span className="help">At least 10 characters.</span>}</label>
-      <input id="password" name="password" type="password" required minLength={signUp ? 10 : 1} autoComplete={signUp ? "new-password" : "current-password"} />
-      {error && <p id="auth-error" role="alert" className="field-error">{error}</p>}
-      <div className="row" style={{ marginTop: "1rem" }}>
-        <button className="btn" disabled={busy}>{busy ? "Please wait…" : signUp ? "Create account" : "Sign in"}</button>
-        <Link href={signUp ? "/auth/sign-in" : "/auth/sign-up"}>{signUp ? "I already have an account" : "Create an account"}</Link>
-        {!signUp && <Link href="/auth/forgot-password">Forgot password?</Link>}
-      </div>
-      {signUp && <p className="small muted">We collect only your email, a display name and your password hash. See the <Link href="/privacy">privacy page</Link>.</p>}
+    <form onSubmit={onSubmit} className="card" aria-describedby={error ? "demo-error" : undefined}>
+      <label htmlFor="email" style={{ marginTop: 0 }}>Email</label>
+      <input id="email" name="email" type="email" required autoComplete="email" />
+      <label htmlFor="password">Password</label>
+      <input id="password" name="password" type="password" required autoComplete="current-password" />
+      {error && <p id="demo-error" role="alert" className="field-error">{error}</p>}
+      <p><button className="btn secondary" disabled={busy}>{busy ? "Please wait…" : "Sign in"}</button></p>
     </form>
   );
 }
 
-export function ForgotPasswordForm() {
-  const [email, setEmail] = useState("");
-  const [done, setDone] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  if (done) {
-    return <p className="notice good" role="status">If an account exists for that address, we have sent a reset link. It expires in one hour.</p>;
-  }
-  return (
-    <form
-      className="card"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        setError(null);
-        const r = await authClient.requestPasswordReset({ email: email.trim(), redirectTo: "/auth/reset-password" });
-        if (r.error && r.error.status === 429) setError("Too many requests. Please wait and try again.");
-        else setDone(true); // same answer whether or not the account exists
-      }}
-    >
-      <label htmlFor="fp-email">Email</label>
-      <input id="fp-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-      {error && <p role="alert" className="field-error">{error}</p>}
-      <p><button className="btn">Send reset link</button></p>
-    </form>
-  );
-}
-
-export function ResetPasswordForm({ token }: { token: string }) {
+export function DisplayNameForm({ initial }: { initial: string }) {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  if (!token) return <p className="notice bad" role="alert">This reset link is missing or invalid. <Link href="/auth/forgot-password">Request a new one</Link>.</p>;
+  const [name, setName] = useState(initial);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   return (
     <form
       className="card"
       onSubmit={async (e) => {
         e.preventDefault();
-        setError(null);
-        const pw = String(new FormData(e.currentTarget).get("password"));
-        const r = await authClient.resetPassword({ newPassword: pw, token });
-        if (r.error) setError(r.error.message || "This link is invalid or has expired. Request a new one.");
-        else router.push("/auth/sign-in");
+        setMsg(null);
+        const res = await authClient.updateUser({ name: name.trim() });
+        if (res.error) setMsg({ ok: false, text: res.error.message || "Could not save that name." });
+        else {
+          setMsg({ ok: true, text: "Saved." });
+          router.refresh();
+        }
       }}
     >
-      <label htmlFor="np">New password <span className="help">At least 10 characters.</span></label>
-      <input id="np" name="password" type="password" required minLength={10} autoComplete="new-password" />
-      {error && <p role="alert" className="field-error">{error}</p>}
-      <p><button className="btn">Set new password</button></p>
+      <label htmlFor="dn" style={{ marginTop: 0 }}>Display name <span className="help">A pseudonym is best: it appears to reviewers, and publicly only if you choose attribution on a contribution. Please don’t use your real name or student number.</span></label>
+      <input id="dn" type="text" value={name} minLength={2} maxLength={40} required onChange={(e) => setName(e.target.value)} />
+      {msg && <p role={msg.ok ? "status" : "alert"} className={msg.ok ? "small" : "field-error"}>{msg.text}</p>}
+      <p><button className="btn secondary">Save display name</button></p>
     </form>
   );
 }
