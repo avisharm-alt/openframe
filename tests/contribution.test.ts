@@ -108,9 +108,10 @@ describe("review and publication", () => {
     expect(() => reviewRevision(student, revisionId, { decision: "approve", checklist: ALL_CHECKS, publicNote: "", privateNote: "" })).toThrow(/Reviewer access/);
     expect(() => queue(student)).toThrow();
     expect(() => getPublicQuestion(id)).toThrow();
-    // a second reviewer can
-    const rev = makeUser(db, "Second", "reviewer");
-    reviewRevision(rev, revisionId, { decision: "approve", checklist: ALL_CHECKS, publicNote: "", privateNote: "" });
+    // one independent approval is not enough; the second one publishes
+    reviewRevision(makeUser(db, "Second", "reviewer"), revisionId, { decision: "approve", checklist: ALL_CHECKS, publicNote: "", privateNote: "" });
+    expect(() => getPublicQuestion(id)).toThrow();
+    reviewRevision(makeUser(db, "Third", "reviewer"), revisionId, { decision: "approve", checklist: ALL_CHECKS, publicNote: "", privateNote: "" });
     expect(getPublicQuestion(id).reviewStatus).toBe("student_reviewed");
   });
 
@@ -146,6 +147,8 @@ describe("review and publication", () => {
     expect(() => revise(author, questionId)).toThrow(); // pending edit blocks another
 
     reviewRevision(rev, r2, { decision: "approve", checklist: ALL_CHECKS, publicNote: "", privateNote: "" });
+    expect(getPublicQuestion(questionId).stem).toMatch(/^Which structure/); // one approval does not replace the live revision
+    reviewRevision(makeUser(db, "Second Reviewer", "reviewer"), r2, { decision: "approve", checklist: ALL_CHECKS, publicNote: "", privateNote: "" });
     expect(getPublicQuestion(questionId).stem).toMatch(/^Edited stem/);
     // the in-flight session keeps its pinned (old) text and can still be answered
     const during = getSessionState(session.id, null);

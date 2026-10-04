@@ -51,11 +51,15 @@ export function validDraft(courseId: string, topicId: string, overrides: Record<
   };
 }
 
-/** Contribution -> submit -> independent review -> published (student-reviewed). Returns ids. */
+export const approve = (reviewer: Actor, revisionId: string) =>
+  reviewRevision(reviewer, revisionId, { decision: "approve", checklist: ALL_CHECKS, publicNote: "", privateNote: "ok" });
+
+/** Contribution -> submit -> two independent approvals -> published and verified. `reviewer` is the first approver. */
 export function publishNew(db: DB, author: Actor, reviewer: Actor, courseId: string, topicId: string, overrides: Record<string, unknown> = {}) {
   const { id, revisionId } = createDraft(author, validDraft(courseId, topicId, overrides));
   submit(author, id, true);
-  reviewRevision(reviewer, revisionId, { decision: "approve", checklist: ALL_CHECKS, publicNote: "", privateNote: "ok" });
+  approve(reviewer, revisionId);
+  approve(makeUser(db, `Second ${uid().slice(0, 8)}`, "reviewer"), revisionId);
   return { questionId: id, revisionId };
 }
 

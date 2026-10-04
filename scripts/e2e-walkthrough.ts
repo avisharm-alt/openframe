@@ -73,8 +73,10 @@ async function main() {
   // --- accounts
   const author = await signUp("author");
   const reviewer = await signUp("reviewer");
+  const reviewer2 = await signUp("secondreviewer");
   const other = await signUp("other");
   grant(reviewer.id, "reviewer");
+  grant(reviewer2.id, "reviewer");
 
   // --- role escalation attempts
   await author.c.req("POST", "/api/auth/update-user", { name: "author", role: "maintainer" });
@@ -118,13 +120,18 @@ async function main() {
   const queue = (await reviewer.c.req("GET", "/api/moderation/queue")).json.queue as any[];
   const item = queue.find((q) => q.questionId === qid);
   check("reviewer sees the submission in the queue", !!item);
-  const allChecks = Object.fromEntries(["attestation", "mapping", "one_answer", "explanations", "distractors", "not_assessment", "references"].map((k) => [k, true]));
+  const allChecks = Object.fromEntries(["independent_answer", "attestation", "mapping", "one_answer", "explanations", "distractors", "not_assessment", "references"].map((k) => [k, true]));
   grant(author.id, "reviewer"); // even a reviewer role must not allow self-approval
   const self = await author.c.req("POST", `/api/moderation/revisions/${item.revisionId}/review`, { decision: "approve", checklist: allChecks });
   check("author cannot approve their own submission (even with reviewer role)", self.status === 403, JSON.stringify(self.json));
   grant(author.id, "student");
   const approve = await reviewer.c.req("POST", `/api/moderation/revisions/${item.revisionId}/review`, { decision: "approve", checklist: allChecks, privateNote: "ok" });
-  check("independent reviewer publishes the question", approve.status === 200, JSON.stringify(approve.json));
+  check("first independent approval is recorded but does not publish", approve.status === 200 && approve.json.approvals === 1 && approve.json.published === false, JSON.stringify(approve.json));
+  check("question with one approval is still not public", (await guest.req("GET", `/api/questions/${qid}`)).status === 404);
+  const again = await reviewer.c.req("POST", `/api/moderation/revisions/${item.revisionId}/review`, { decision: "approve", checklist: allChecks });
+  check("the same reviewer cannot approve twice", again.status === 409, JSON.stringify(again.json));
+  const approve2 = await reviewer2.c.req("POST", `/api/moderation/revisions/${item.revisionId}/review`, { decision: "approve", checklist: allChecks, privateNote: "ok" });
+  check("a second, different reviewer publishes the question", approve2.status === 200 && approve2.json.published === true && approve2.json.verified === true, JSON.stringify(approve2.json));
   const pub = await guest.req("GET", `/api/questions/${qid}`);
   check("published question is publicly visible and reviewed, without key/explanations", pub.status === 200 && pub.json.reviewStatus === "student_reviewed" && !JSON.stringify(pub.json).match(/explanation|correctOption/), JSON.stringify(pub.json));
 
