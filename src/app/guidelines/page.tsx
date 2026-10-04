@@ -4,6 +4,8 @@ export default function Guidelines() {
   return (
     <div style={{ maxWidth: "44rem" }}>
       <h1>Contribution guidelines</h1>
+      <h2>Uploading course notes</h2>
+      <p><Link href="/course-notes">Upload course notes</Link> as PDF or plain text files up to 10 MB. Share your own notes or material you have permission to share. Do not include exam or quiz questions or personal information. Files are private to you and the OpenFrame review team; uploading does not publish them or automatically generate questions.</p>
       <h2>What a good question looks like</h2>
       <ul>
         <li>Original wording, tied to a specific course topic and a specific learning objective.</li>
@@ -22,7 +24,7 @@ export default function Guidelines() {
       <h2>Rules</h2>
       <ul>
         <li>No professor-created exams, quizzes, tests, answer keys, screenshots, scans, copied or reconstructed questions. See <Link href="/academic-integrity">academic integrity</Link>.</li>
-        <li>No file uploads. Submit structured text only. Markdown and LaTeX are supported; HTML, scripts and images are not.</li>
+        <li>Question drafts accept structured text only. Course notes use the separate upload form. Markdown and LaTeX are supported in questions; HTML, scripts and images are not.</li>
         <li>You must confirm the originality and permission statement on every submission.</li>
         <li>Course association does not give you permission to reproduce lecture slides, textbook questions, or other protected material.</li>
       </ul>

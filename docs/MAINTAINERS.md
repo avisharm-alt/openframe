@@ -87,3 +87,7 @@ Schedule it (cron/systemd timer) and copy backups off the machine. Backups conta
 - [ ] Real courses/topics inserted and verified. No demo data in production.
 - [ ] Backup + restore rehearsed. Guest-session purge scheduled.
 - [ ] Privacy page reviewed against what you actually run (analytics, logs, proxy logs).
+
+## Course notes
+
+Students upload private PDF or UTF-8 text notes from /course-notes. Reviewers and maintainers can download them in /moderation?tab=notes. Uploads do not generate or publish questions automatically. Files are stored in SQLite, covered by the same persistent volume and backups; removed uploads may remain in retained backups. Limits are 10 MB per file, 50 MB per account and five upload attempts per hour. Downloads are attachments; inspect files using your normal document tools.

@@ -20,6 +20,8 @@ const csp = [
 const nextConfig: NextConfig = {
   serverExternalPackages: ["better-sqlite3"],
   poweredByHeader: false,
+  // Allow a 10 MB file plus multipart metadata; the notes route enforces its own streamed cap.
+  experimental: { proxyClientMaxBodySize: 11 * 1024 * 1024 },
   async headers() {
     return [
       {

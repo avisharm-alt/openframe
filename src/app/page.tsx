@@ -63,7 +63,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
           <CourseRequestForm initialCode={q && courses.length === 0 ? q : ""} universities={universities} />
         </div>
       </details>
-      <p className="muted small">Or <Link href="/contribute">contribute questions</Link> for courses that already exist.</p>
+      <p className="muted small">Or <Link href="/course-notes">upload course notes</Link> for courses that already exist.</p>
     </>
   );
 }

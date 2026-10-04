@@ -34,7 +34,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <nav className="main" aria-label="Main">
               <Link href="/">Courses</Link>
               <Link href="/saved">Saved &amp; history</Link>
-              <Link href="/contribute">Contribute</Link>
+              <Link href="/course-notes">Upload course notes</Link>
               {isReviewer(actor) && <Link href="/moderation">Moderation</Link>}
             </nav>
             <div className="row small">

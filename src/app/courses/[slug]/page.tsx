@@ -27,7 +27,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
       {total === 0 ? (
         <div className="notice warn" role="status">
           This course has no published questions yet.{" "}
-          You can <Link href="/contribute">contribute a question</Link>.
+          You can <Link href="/course-notes">upload course notes</Link>.
         </div>
       ) : (
         <p><Link className="btn" href={`/practice/setup?course=${slug}`}>Start practice ({total} question{total === 1 ? "" : "s"})</Link></p>
