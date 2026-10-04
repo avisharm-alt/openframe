@@ -22,7 +22,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <a className="skip-link" href="#main">Skip to main content</a>
         {config.demo && (
           <div className="demo-banner" role="note">
-            Demo mode: all courses and questions are demonstration content and are unreviewed.
+            Demo mode: all courses and questions are demonstration content.
           </div>
         )}
         <div className="site-notice" role="note" aria-label="About this site">

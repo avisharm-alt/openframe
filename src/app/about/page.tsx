@@ -19,7 +19,7 @@ export default function About() {
       <h2>How questions get here</h2>
       <p>
         Students write or generate questions (often with their own AI tools), check them, and submit them as structured text. Another student reviews each submission against a
-        checklist before it is published. “Student-reviewed” means another student checked it; it is not expert verification and does not guarantee accuracy. Anyone can report a problem
+        checklist before it is published. This process does not guarantee accuracy. Anyone can report a problem
         on any question, and moderators can withdraw content promptly.
       </p>
       <h2>Licensing</h2>
