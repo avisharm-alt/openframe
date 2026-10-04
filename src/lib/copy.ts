@@ -17,5 +17,8 @@ export const UNVERIFIED_EXPLAINER =
 export const INCLUDE_UNVERIFIED_HELP =
   "Unverified questions are AI-generated or newly submitted and have not yet been checked by two independent student reviewers. They may contain errors.";
 
+export const LICENSE_NOTE =
+  "If your question is accepted, OpenFrame proposes to release it under CC BY 4.0, credited to “OpenFrame contributors” (or to your pseudonym if you opt in to attribution). This is not final until the project owner confirms it. A release cannot be undone for copies already shared, although OpenFrame will stop showing a question that is withdrawn. Do not submit anything you are not entitled to share under these terms.";
+
 export const STRUCTURAL_CHECK_NOTE =
   "These automatic checks only look at form and rules (for example, one correct answer and explanations for every option). They do not verify that the content is factually correct.";

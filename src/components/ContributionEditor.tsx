@@ -6,7 +6,7 @@ import { Markdown } from "./Markdown";
 import { QuestionMeta } from "./QuestionMeta";
 import { OptionList } from "./SessionPlayer";
 import { ATTESTATION_TEXT } from "@/lib/attestation";
-import { STRUCTURAL_CHECK_NOTE } from "@/lib/copy";
+import { LICENSE_NOTE, STRUCTURAL_CHECK_NOTE } from "@/lib/copy";
 import type { SessionItem } from "@/lib/services/practice";
 
 type Target = { id: string; code: string; title: string; isDemo: boolean; topics: { id: string; title: string; unit: string }[] };
@@ -194,6 +194,7 @@ export function ContributionEditor({ targets, initial }: { targets: Target[]; in
 
         <fieldset>
           <legend>Before you submit</legend>
+          <p className="small muted">{LICENSE_NOTE}</p>
           <label className="check"><input type="checkbox" checked={attested} onChange={(e) => setAttested(e.target.checked)} /><span>{ATTESTATION_TEXT}</span></label>
           <p className="small muted">Never include professor-created exam, quiz or test content, answer keys, or questions you remember from real assessments, even reworded.</p>
         </fieldset>

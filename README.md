@@ -110,6 +110,6 @@ tests/                 vitest suites
 
 ## Licensing
 
-Application code: MIT (`LICENSE`). Accepted question **content** is covered by a separate content license that is **proposed but unconfirmed**: see `docs/CONTENT-LICENSE.md`.
+Application code: MIT (`LICENSE`). Accepted question **content** is proposed to be released under **CC BY 4.0**, which is **unconfirmed** and needs the owner's decision (the bundled AI-generated Western banks are excluded for now): see `docs/CONTENT-LICENSE.md`.
 
 More: [CONTRIBUTING.md](CONTRIBUTING.md) · [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) · [SECURITY.md](SECURITY.md) · [docs/MAINTAINERS.md](docs/MAINTAINERS.md) · [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)

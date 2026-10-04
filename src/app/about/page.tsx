@@ -26,8 +26,9 @@ export default function About() {
       </p>
       <h2>Licensing</h2>
       <p>
-        Application code is proposed to be released under the MIT license. Accepted original questions are intended to be shared under a separately stated content license that the
-        project owner has yet to confirm; real submissions are not opened until that is settled. An AI-provenance label does not by itself establish ownership.
+        Application code is proposed to be released under the MIT license. Accepted original questions are proposed to be shared under <b>CC BY 4.0</b>, credited to “OpenFrame contributors”;
+        the project owner has yet to confirm this, and real submissions are not opened until that is settled. The AI-generated Western starter questions are not covered by that proposal until their
+        source and ownership are settled. An AI-provenance label does not by itself establish ownership.
         See <code>LICENSE</code> and <code>docs/CONTENT-LICENSE.md</code> in the repository.
       </p>
       <p>See also: <Link href="/guidelines">contribution guidelines</Link>, <Link href="/academic-integrity">academic integrity</Link>, <Link href="/privacy">privacy</Link>, <Link href="/content-removal">content removal</Link>.</p>

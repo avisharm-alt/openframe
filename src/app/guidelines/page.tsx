@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { config } from "@/lib/config";
+import { LICENSE_NOTE } from "@/lib/copy";
 export const metadata = { title: "Contribution guidelines" };
 export default function Guidelines() {
   return (
@@ -32,6 +33,7 @@ export default function Guidelines() {
         <li><b>Write against the public syllabus and learning outcomes.</b> Base questions on the course outline, published learning outcomes and standard textbook-level knowledge of the subject. Never derive questions from an instructor&apos;s slides, handouts, notes, recordings, problem sets or exam material unless the instructor has given you permission, and say so when you submit.</li>
         <li>Question drafts accept structured text only{config.notesUploadsEnabled ? "; course notes use the separate upload form" : ""}. Markdown and LaTeX are supported in questions; HTML, scripts and images are not.</li>
         <li>You must confirm the originality and permission statement on every submission.</li>
+        <li>Questions you contribute are proposed to be shared under CC BY 4.0. {LICENSE_NOTE} See <code>docs/CONTENT-LICENSE.md</code>.</li>
         <li>Course association does not give you permission to reproduce lecture slides, textbook questions, or other protected material.</li>
       </ul>
       <h2>Review and verification</h2>
