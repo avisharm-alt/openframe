@@ -210,3 +210,8 @@ input[type="file"]::file-selector-button {
   border: 1px solid var(--border-strong); border-radius: var(--radius);
   background: var(--surface-2); color: var(--text); font: inherit; cursor: pointer;
 }
+
+/* Review workspace */
+dl.shortcuts { display: grid; grid-template-columns: max-content 1fr; gap: 0.3rem 1rem; margin: 0.5rem 0 0; }
+dl.shortcuts dd { margin: 0; }
+kbd { font: inherit; font-size: 0.8rem; border: 1px solid var(--border-strong); border-radius: 3px; padding: 0 0.3rem; background: var(--surface-2); }

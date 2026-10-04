@@ -3,8 +3,8 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { approve, freshDb, makeUser, seeded, validDraft, ALL_CHECKS } from "./helpers";
 import { openDb, migrate } from "@/lib/db";
-import { createDraft, submit } from "@/lib/services/contributions";
-import { reviewRevision, verificationQueue, listEvents, queue } from "@/lib/services/moderation";
+import { createDraft, editAsReviewer, submit } from "@/lib/services/contributions";
+import { reviewRevision, reviewNavigation, verificationQueue, listEvents, queue, getRevisionForReview } from "@/lib/services/moderation";
 import { importBundledQuestionBank } from "@/lib/question-bank";
 import { getCourse, getPublicQuestion, listCourses } from "@/lib/services/catalog";
 import { createSession, getSessionState } from "@/lib/services/practice";
@@ -226,6 +226,94 @@ describe("what learners see", () => {
     const mixed = getSessionState(createSession(null, { courseId: bio().id, count: 50, mode: "practice", includeUnverified: true }).id, null);
     expect(mixed.items).toHaveLength(50);
     for (const i of mixed.items) expect(i.question!.reviewStatus === "student_reviewed").toBe(i.question!.verifiedBy.length === 2);
+    db.close();
+  });
+});
+
+describe("editing while reviewing", () => {
+  function edit(db: ReturnType<typeof freshDb>, revisionId: string, over: Record<string, unknown> = {}) {
+    const opts = db.prepare("SELECT id, text, explanation FROM question_option WHERE revision_id = ? ORDER BY position").all(revisionId) as { id: string; text: string; explanation: string }[];
+    const rev = db.prepare("SELECT stem, learning_objective AS lo, difficulty, correct_option_id AS ok FROM question_revision WHERE id = ?").get(revisionId) as { stem: string; lo: string; difficulty: string; ok: string };
+    return { stem: rev.stem, learningObjective: rev.lo, difficulty: rev.difficulty, options: opts, correctOptionId: rev.ok, summary: "Fixed the stem", attested: true, ...over };
+  }
+
+  it("creates a new revision that needs two other reviewers, leaving the live question untouched", () => {
+    const db = freshDb();
+    importBundledQuestionBank(db);
+    const [editor, r2, r3] = ["Editor", "Two", "Three"].map((n) => makeUser(db, `Reviewer ${n}`, "reviewer"));
+    const item = verificationQueue(editor)[0];
+    const stemBefore = getPublicQuestion(item.questionId).stem;
+    approve(editor, item.revisionId); // the editor approved the original earlier
+    const saved = editAsReviewer(editor, item.revisionId, edit(db, item.revisionId, { stem: stemBefore + " (clarified wording to remove ambiguity)" }));
+    expect(saved.number).toBe(2);
+    expect(getPublicQuestion(item.questionId).stem).toBe(stemBefore); // live question unchanged until approved
+    expect(db.prepare("SELECT author_id, state FROM question_revision WHERE id = ?").get(saved.revisionId)).toEqual({ author_id: editor.id, state: "pending" });
+    expect(() => editAsReviewer(r2, item.revisionId, edit(db, item.revisionId))).toThrow(/already awaiting review/);
+
+    // The editor can no longer review any revision of this question.
+    expect(() => approve(editor, saved.revisionId)).toThrow(/own submission/);
+    expect(getRevisionForReview(editor, item.revisionId)).toMatchObject({ canReview: false, wroteIt: true });
+    expect(verificationQueue(editor).find((i) => i.revisionId === item.revisionId)).toMatchObject({ wroteIt: true });
+
+    expect(approve(r2, saved.revisionId)).toMatchObject({ approvals: 1, published: false });
+    expect(approve(r3, saved.revisionId)).toMatchObject({ approvals: 2, verified: true, published: true });
+    const pub = getPublicQuestion(item.questionId);
+    expect(pub.stem).toMatch(/clarified wording/);
+    expect(pub.reviewStatus).toBe("student_reviewed");
+    expect(pub.verifiedBy.slice().sort()).toEqual(["Reviewer Three", "Reviewer Two"]);
+    expect((db.prepare("SELECT state FROM question_revision WHERE id = ?").get(item.revisionId) as { state: string }).state).toBe("superseded");
+    const maint = makeUser(db, "Maintainer", "maintainer");
+    expect((listEvents(maint, item.questionId) as { action: string; detail: string }[]).find((e) => e.action === "reviewer_edit")?.detail).toContain("Fixed the stem");
+    db.close();
+  });
+
+  it("validates the edit, requires the attestation and a reviewer role", () => {
+    const db = freshDb();
+    importBundledQuestionBank(db);
+    const rev = makeUser(db, "Reviewer", "reviewer");
+    const item = verificationQueue(rev)[0];
+    expect(() => editAsReviewer(rev, item.revisionId, edit(db, item.revisionId, { attested: false }))).toThrow();
+    expect(() => editAsReviewer(rev, item.revisionId, edit(db, item.revisionId, { stem: "Too short" }))).toThrow(/highlighted/);
+    expect(() => editAsReviewer(rev, item.revisionId, edit(db, item.revisionId, { correctOptionId: crypto.randomUUID() }))).toThrow(/highlighted/);
+    expect(() => editAsReviewer(makeUser(db, "Student"), item.revisionId, edit(db, item.revisionId))).toThrow(/Reviewer access/);
+    expect(() => editAsReviewer(rev, crypto.randomUUID(), edit(db, item.revisionId))).toThrow(/not found/i);
+    expect((db.prepare("SELECT COUNT(*) AS n FROM question_revision WHERE question_id = ?").get(item.questionId) as { n: number }).n).toBe(1);
+    db.close();
+  });
+
+  it("replaces a pending submission with the reviewer's correction", () => {
+    const db = freshDb();
+    const { demo101 } = seeded(db);
+    const author = makeUser(db, "Author", "reviewer");
+    const editor = makeUser(db, "Reviewer Editor", "reviewer");
+    const { id, revisionId } = createDraft(author, validDraft(demo101.courseId, Object.values(demo101.topicIds)[0]));
+    submit(author, id, true);
+    const saved = editAsReviewer(editor, revisionId, edit(db, revisionId, { stem: "Which structure lets a program repeat steps while its condition stays true?" }));
+    expect((db.prepare("SELECT state FROM question_revision WHERE id = ?").get(revisionId) as { state: string }).state).toBe("superseded");
+    expect(queue(makeUser(db, "Other", "reviewer")).map((q) => q.revisionId)).toEqual([saved.revisionId]);
+    expect(() => approve(author, saved.revisionId)).toThrow(/own submission/);
+    db.close();
+  });
+});
+
+describe("queue navigation", () => {
+  it("skips questions the reviewer wrote or already decided and reports progress", () => {
+    const db = freshDb();
+    importBundledQuestionBank(db);
+    const a = makeUser(db, "Reviewer A", "reviewer");
+    const b = makeUser(db, "Reviewer B", "reviewer");
+    const ids = verificationQueue(a).map((i) => i.revisionId);
+    approve(a, ids[1]); // moves to the front for everyone; a no longer needs to review it
+    const forA = verificationQueue(a);
+    expect(forA[0].revisionId).toBe(ids[1]);
+    const nav0 = reviewNavigation(a, forA[0].revisionId, "verify");
+    expect(nav0).toMatchObject({ list: "verify", position: 1, total: 300, prevId: null, todo: 299 });
+    expect(nav0.nextId).toBe(forA[1].revisionId);
+    const nav1 = reviewNavigation(a, forA[1].revisionId, "verify");
+    expect(nav1).toMatchObject({ position: 2, prevId: null, nextId: forA[2].revisionId }); // forA[0] is already decided, so there is nothing to go back to
+    const navB = reviewNavigation(b, forA[0].revisionId, "verify");
+    expect(navB).toMatchObject({ position: 1, todo: 300, prevId: null, nextId: forA[1].revisionId });
+    expect(reviewNavigation(b, forA[1].revisionId, "verify").prevId).toBe(forA[0].revisionId);
     db.close();
   });
 });

@@ -1,8 +1,8 @@
 import { getDb, uid, now, type DB } from "../db";
 import { ATTESTATION_TEXT } from "../config";
-import { ServiceError, conflict, invalid, notFound } from "../errors";
-import type { Actor } from "../types";
-import { contentFlags, draftSchema, similarity, structuralCheck, type DraftInput } from "../validation";
+import { ServiceError, conflict, forbidden, invalid, notFound } from "../errors";
+import { isReviewer, type Actor } from "../types";
+import { contentFlags, draftSchema, reviewerEditSchema, similarity, structuralCheck, type DraftInput } from "../validation";
 import { logEvent } from "./events";
 
 type QRow = {
@@ -192,6 +192,50 @@ export function submit(actor: Actor, qid: string, attested: true) {
   })();
   logEvent(actor.id, "submitted", { questionId: qid, revisionId: r.id, detail: { number: r.number } });
   return { id: qid, state: "pending_review", warnings };
+}
+
+/**
+ * A reviewer corrects a question while reviewing it. The correction is a new revision authored by the reviewer and submitted
+ * straight to review, so it needs two approvals from other reviewers. The revision it was based on stays live (or, if it was a
+ * pending submission, is superseded by the correction).
+ */
+export function editAsReviewer(actor: Actor, baseRevisionId: string, raw: unknown) {
+  if (!isReviewer(actor)) throw forbidden("Reviewer access required.");
+  const db = getDb();
+  const input = reviewerEditSchema.parse(raw);
+  const base = db.prepare("SELECT * FROM question_revision WHERE id = ?").get(baseRevisionId) as RevRow | undefined;
+  if (!base) throw notFound("Revision not found");
+  const q = db.prepare("SELECT * FROM question WHERE id = ?").get(base.question_id) as QRow;
+  if (["withdrawn", "rejected"].includes(q.state)) throw conflict("closed", "This question has been closed, so it cannot be edited.");
+  if (q.live_revision_id !== base.id && base.state !== "pending") throw conflict("not_editable", "Only the live revision or a revision awaiting review can be edited.");
+  const other = db.prepare("SELECT 1 FROM question_revision WHERE question_id = ? AND state = 'pending' AND id != ?").get(q.id, base.id);
+  if (other) throw conflict("edit_pending", "Another revision of this question is already awaiting review.");
+
+  const merged: DraftInput = {
+    ...readDraft(db, q, base),
+    stem: input.stem,
+    learningObjective: input.learningObjective,
+    difficulty: input.difficulty,
+    options: input.options,
+    correctOptionId: input.correctOptionId,
+  };
+  const { errors, warnings } = structuralCheck(merged);
+  if (errors.length) throw new ServiceError(422, "invalid", "Please fix the highlighted problems before saving.", { errors, warnings });
+
+  const rid = uid();
+  const t = now();
+  const number = latest(db, q.id).number + 1;
+  db.transaction(() => {
+    db.prepare(
+      `INSERT INTO question_revision (id, question_id, number, author_id, state, topic_id, created_at, submitted_at, attested_at, attestation_text, flags)
+       VALUES (?,?,?,?, 'pending', ?, ?, ?, ?, ?, ?)`,
+    ).run(rid, q.id, number, actor.id, base.topic_id, t, t, t, ATTESTATION_TEXT, JSON.stringify(contentFlags(merged).map((code) => ({ code }))));
+    writeRevision(db, rid, merged);
+    if (base.state === "pending") db.prepare("UPDATE question_revision SET state='superseded' WHERE id = ?").run(base.id);
+    db.prepare("UPDATE question SET updated_at = ? WHERE id = ?").run(t, q.id);
+  })();
+  logEvent(actor.id, "reviewer_edit", { questionId: q.id, revisionId: rid, detail: { number, basedOn: base.number, summary: input.summary } });
+  return { questionId: q.id, revisionId: rid, number };
 }
 
 export function withdrawOwn(actor: Actor, qid: string) {

@@ -1,28 +1,33 @@
 import Link from "next/link";
 import { currentActor } from "@/lib/session";
 import { isMaintainer, isReviewer } from "@/lib/types";
-import { listCourseRequests, listEvents, queue } from "@/lib/services/moderation";
+import { listCourseRequests, listEvents, queue, verificationProgress, verificationQueue } from "@/lib/services/moderation";
 import { listCourseNotes } from "@/lib/services/course-notes";
 import { ReportsPanel } from "@/components/ModerationPanels";
 
 export const metadata = { title: "Moderation" };
 
-export default async function Moderation({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+const PAGE_SIZE = 50;
+
+export default async function Moderation({ searchParams }: { searchParams: Promise<{ tab?: string; course?: string; page?: string }> }) {
   const actor = await currentActor();
   if (!actor) return <div className="notice"><Link href="/auth/sign-in">Sign in</Link> to continue.</div>;
   if (!isReviewer(actor)) {
     return <div className="notice bad" role="alert"><b>Permission denied.</b> The moderation area is only for reviewers and maintainers. Roles are granted by a maintainer.</div>;
   }
-  const tab = (await searchParams).tab ?? "submissions";
-  const tabs = [["submissions", "Submissions"], ["reports", "Reports"], ["notes", "Course notes"], ["requests", "Course requests"], ...(isMaintainer(actor) ? [["events", "Audit log"]] : [])];
+  const sp = await searchParams;
+  const tab = sp.tab ?? "submissions";
+  const progress = verificationProgress(actor);
+  const tabs = [["submissions", "Submissions"], ["verify", `Needs verification (${progress.total - progress.verified})`], ["reports", "Reports"], ["notes", "Course notes"], ["requests", "Course requests"], ...(isMaintainer(actor) ? [["events", "Audit log"]] : [])];
   return (
     <>
       <h1>Moderation</h1>
-      <p className="muted small">You are signed in as {actor.role}. You cannot review your own submissions; another reviewer must.</p>
+      <p className="muted small">You are signed in as {actor.role}. You cannot review your own submissions; another reviewer must. Questions are verified, and new submissions published, only after approvals from two different reviewers. Your display name is shown publicly on questions you help verify.</p>
       <nav className="tabs" aria-label="Moderation sections">
         {tabs.map(([k, l]) => <Link key={k} href={`/moderation?tab=${k}`} aria-current={tab === k ? "page" : undefined}>{l}</Link>)}
       </nav>
       {tab === "submissions" && <Submissions actorId={actor.id} role={actor.role} />}
+      {tab === "verify" && <Verify />}
       {tab === "reports" && <ReportsPanel />}
       {tab === "notes" && <Notes />}
       {tab === "requests" && <Requests />}
@@ -36,25 +41,83 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
     return (
       <div className="table-wrap" tabIndex={0} role="region" aria-label="Table (scrollable)">
         <table>
-          <thead><tr><th scope="col">Submitted</th><th scope="col">Question</th><th scope="col">Course / topic</th><th scope="col">Notes</th><th scope="col"><span className="sr-only">Review</span></th></tr></thead>
+          <thead><tr><th scope="col">Submitted</th><th scope="col">Question</th><th scope="col">Course / topic</th><th scope="col">Approvals</th><th scope="col">Notes</th><th scope="col"><span className="sr-only">Review</span></th></tr></thead>
           <tbody>
             {items.map((q) => (
               <tr key={q.revisionId}>
                 <td>{new Date(q.submittedAt).toLocaleDateString("en-CA")}</td>
                 <td>{q.stem.length > 100 ? q.stem.slice(0, 100) + "…" : q.stem}</td>
                 <td>{q.courseCode} · {q.topic}</td>
+                <td>{q.approvals} of {q.required}</td>
                 <td>
                   {q.isDemo && <span className="badge demo">demo</span>}
                   {q.isEdit && <span className="badge">edit (rev {q.number})</span>}
-                  {q.ownSubmission && <span className="badge">yours: needs another reviewer</span>}
+                  {q.ownSubmission && <span className="badge">yours: needs other reviewers</span>}
+                  {q.approvedByMe && <span className="badge">you approved</span>}
                   {q.flags.length > 0 && <span className="badge demo">{q.flags.length} flag{q.flags.length === 1 ? "" : "s"}</span>}
                 </td>
-                <td><Link href={`/moderation/revisions/${q.revisionId}`}>{q.ownSubmission ? "View" : "Review"}</Link></td>
+                <td><Link href={`/moderation/revisions/${q.revisionId}?list=submissions`}>{q.ownSubmission || q.approvedByMe ? "View" : "Review"}</Link></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+    );
+  }
+  function Verify() {
+    const all = verificationQueue(actor!);
+    const courses = [...new Map(all.map((i) => [i.courseId, i.courseCode])).entries()];
+    const items = sp.course ? all.filter((i) => i.courseId === sp.course) : all;
+    const page = Math.max(1, Number(sp.page) || 1);
+    const rows = items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    const pages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+    const first = items.find((i) => !i.wroteIt && !i.decidedByMe);
+    const href = (extra: Record<string, string>) => `/moderation?${new URLSearchParams({ tab: "verify", ...(sp.course ? { course: sp.course } : {}), ...extra })}`;
+    return (
+      <>
+        <p>
+          <b>{progress.verified}</b> of <b>{progress.total}</b> published questions are verified. Each needs approvals from two different reviewers who worked out the answer
+          themselves. Questions that already have one approval come first.
+        </p>
+        <nav aria-label="Filter by course" className="row" style={{ margin: "0.5rem 0" }}>
+          <Link href="/moderation?tab=verify" aria-current={!sp.course ? "page" : undefined} className="btn small secondary">All courses ({all.length})</Link>
+          {courses.map(([id, code]) => <Link key={id} href={`/moderation?tab=verify&course=${id}`} aria-current={sp.course === id ? "page" : undefined} className="btn small secondary">{code} ({all.filter((i) => i.courseId === id).length})</Link>)}
+        </nav>
+        {first ? (
+          <p><Link className="btn" href={`/moderation/revisions/${first.revisionId}?list=verify`}>Start reviewing ({items.filter((i) => !i.wroteIt && !i.decidedByMe).length} for you)</Link>
+            <span className="small muted"> Use the keyboard shortcuts on the review page to work through the queue quickly.</span></p>
+        ) : <p className="muted">Nothing left for you to verify here.</p>}
+        {rows.length > 0 && (
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Table (scrollable)">
+            <table>
+              <thead><tr><th scope="col">Question</th><th scope="col">Course / topic</th><th scope="col">Approvals</th><th scope="col">Notes</th><th scope="col"><span className="sr-only">Review</span></th></tr></thead>
+              <tbody>
+                {rows.map((q) => (
+                  <tr key={q.revisionId}>
+                    <td>{q.stem.length > 100 ? q.stem.slice(0, 100) + "…" : q.stem}</td>
+                    <td>{q.courseCode} · {q.topic}</td>
+                    <td>{q.approvals} of {q.required}</td>
+                    <td>
+                      {q.isDemo && <span className="badge demo">demo</span>}
+                      {q.objected && <span className="badge demo">changes requested</span>}
+                      {q.decidedByMe && <span className="badge">you decided</span>}
+                      {q.wroteIt && <span className="badge">yours: needs other reviewers</span>}
+                    </td>
+                    <td><Link href={`/moderation/revisions/${q.revisionId}?list=verify`}>{q.wroteIt || q.decidedByMe ? "View" : "Review"}</Link></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {pages > 1 && (
+          <nav aria-label="Pages" className="row" style={{ marginTop: "0.8rem" }}>
+            {page > 1 && <Link href={href({ page: String(page - 1) })}>← Previous page</Link>}
+            <span className="small muted">Page {page} of {pages}</span>
+            {page < pages && <Link href={href({ page: String(page + 1) })}>Next page →</Link>}
+          </nav>
+        )}
+      </>
     );
   }
   function Notes() {

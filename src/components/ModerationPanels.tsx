@@ -1,56 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
-import { CHECKLIST_LABELS, REVIEW_CHECKLIST } from "@/lib/types";
-import { STRUCTURAL_CHECK_NOTE, VERIFIED_EXPLAINER } from "@/lib/copy";
-
-export function ReviewPanel({ revisionId, questionId }: { revisionId: string; questionId: string }) {
-  const router = useRouter();
-  const [checks, setChecks] = useState<Record<string, boolean>>({});
-  const [publicNote, setPublicNote] = useState("");
-  const [privateNote, setPrivateNote] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const all = REVIEW_CHECKLIST.every((k) => checks[k]);
-
-  async function decide(decision: "approve" | "request_changes" | "reject") {
-    setBusy(true); setError(null);
-    try {
-      await api("POST", `/api/moderation/revisions/${revisionId}/review`, { decision, checklist: checks, publicNote, privateNote });
-      router.push("/moderation");
-      router.refresh();
-    } catch (e) { setError((e as Error).message); setBusy(false); }
-  }
-  async function withdraw() {
-    const reason = window.prompt("Reason for withdrawing this question (logged in the audit trail):");
-    if (!reason) return;
-    try { await api("POST", `/api/moderation/questions/${questionId}/withdraw`, { reason }); router.push("/moderation"); router.refresh(); } catch (e) { setError((e as Error).message); }
-  }
-  return (
-    <form className="card" onSubmit={(e) => e.preventDefault()} aria-label="Review decision">
-      <h2 style={{ marginTop: 0 }}>Your review</h2>
-      <p className="small muted">{VERIFIED_EXPLAINER} {STRUCTURAL_CHECK_NOTE}</p>
-      <fieldset>
-        <legend>Checklist (all required to approve)</legend>
-        {REVIEW_CHECKLIST.map((k) => (
-          <label key={k} className="check"><input type="checkbox" checked={!!checks[k]} onChange={(e) => setChecks({ ...checks, [k]: e.target.checked })} /><span>{CHECKLIST_LABELS[k]}</span></label>
-        ))}
-      </fieldset>
-      <label htmlFor="pub">Note to the contributor <span className="help">Required when requesting changes or rejecting. Visible to the contributor.</span></label>
-      <textarea id="pub" value={publicNote} maxLength={1500} onChange={(e) => setPublicNote(e.target.value)} />
-      <label htmlFor="priv">Private note <span className="help">Visible to reviewers only.</span></label>
-      <textarea id="priv" style={{ minHeight: "4rem" }} value={privateNote} maxLength={1500} onChange={(e) => setPrivateNote(e.target.value)} />
-      {error && <p role="alert" className="field-error">{error}</p>}
-      <div className="row" style={{ marginTop: "1rem" }}>
-        <button className="btn" disabled={!all || busy} onClick={() => decide("approve")}>Approve</button>
-        <button className="btn secondary" disabled={busy || !publicNote.trim()} onClick={() => decide("request_changes")}>Request changes</button>
-        <button className="btn danger" disabled={busy || !publicNote.trim()} onClick={() => decide("reject")}>Reject</button>
-        <button className="btn secondary" type="button" onClick={withdraw}>Withdraw question…</button>
-      </div>
-    </form>
-  );
-}
 
 type Report = { id: string; category: string; details: string; priority: number; state: string; createdAt: string; questionId: string | null; questionState: string | null; stem: string | null; courseCode: string | null };
 

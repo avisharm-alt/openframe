@@ -128,6 +128,17 @@ export function similarity(a: string, b: string): number {
 
 export const submitSchema = z.strictObject({ attested: z.literal(true, { error: "You must accept the originality and permission statement." }) });
 
+/** A reviewer's correction while reviewing. It always becomes a new revision that other reviewers must approve. */
+export const reviewerEditSchema = z.strictObject({
+  stem: trimmed(3000),
+  learningObjective: trimmed(300),
+  difficulty: z.enum(DIFFICULTIES),
+  options: z.array(optionDraft).min(4).max(5),
+  correctOptionId: uuid,
+  summary: trimmed(200).optional().default(""),
+  attested: z.literal(true, { error: "You must accept the originality and permission statement." }),
+});
+
 export const reviewSchema = z.strictObject({
   decision: z.enum(["approve", "request_changes", "reject"]),
   checklist: z.record(z.string(), z.boolean()).default({}),
