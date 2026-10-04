@@ -13,7 +13,7 @@ export function CourseList({ courses, showUniversity = false }: { courses: Cours
             </div>
             <p className="small muted course-meta">{showUniversity && <>{c.universityName} <span aria-hidden="true">/</span> </>}{c.subject}</p>
             <p className="small course-counts">
-              <span><b>{c.reviewedCount}</b> student-reviewed</span><span><b>{c.unreviewedCount}</b> unreviewed</span>
+              <span><b>{c.reviewedCount + c.unreviewedCount}</b> question{c.reviewedCount + c.unreviewedCount === 1 ? "" : "s"}</span>
               {c.topicMatches.length > 0 && <span className="muted"> · topic match: {c.topicMatches.join(", ")}</span>}
             </p>
           </div>

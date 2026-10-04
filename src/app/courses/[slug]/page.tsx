@@ -2,11 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCourse } from "@/lib/services/catalog";
 import { ServiceError } from "@/lib/errors";
-import { COURSE_NOTICE, STUDENT_REVIEWED_EXPLAINER } from "@/lib/copy";
+import { COURSE_NOTICE } from "@/lib/copy";
 
-export default async function CoursePage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ review?: string }> }) {
+export default async function CoursePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const review = (await searchParams).review === "all" ? "all" : "reviewed";
   let course;
   try {
     course = getCourse(slug);
@@ -14,7 +13,7 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
     if (e instanceof ServiceError && e.status === 404) notFound();
     throw e;
   }
-  const count = (r: number, u: number) => (review === "all" ? r + u : r);
+  const count = (r: number, u: number) => r + u;
   const total = count(course.reviewedCount, course.unreviewedCount);
   return (
     <>
@@ -25,21 +24,13 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
       {course.contexts.length > 0 && <p className="small muted">Offerings: {course.contexts.map((c) => `${c.label}${c.academicYear ? ` (${c.academicYear})` : ""}`).join(", ")}</p>}
       <div className="notice" role="note">{COURSE_NOTICE}</div>
 
-      <nav className="tabs" aria-label="Review status filter">
-        <Link href={`/courses/${slug}`} aria-current={review === "reviewed" ? "page" : undefined}>Student-reviewed ({course.reviewedCount})</Link>
-        <Link href={`/courses/${slug}?review=all`} aria-current={review === "all" ? "page" : undefined}>Include unreviewed ({course.reviewedCount + course.unreviewedCount})</Link>
-      </nav>
-      <p className="small muted">{STUDENT_REVIEWED_EXPLAINER}</p>
-
       {total === 0 ? (
         <div className="notice warn" role="status">
-          {course.reviewedCount + course.unreviewedCount === 0
-            ? "This course has no published questions yet."
-            : "This course has no student-reviewed questions yet. Switch to “Include unreviewed” to practise with unreviewed questions."}{" "}
+          This course has no published questions yet.{" "}
           You can <Link href="/contribute">contribute a question</Link>.
         </div>
       ) : (
-        <p><Link className="btn" href={`/practice/setup?course=${slug}${review === "all" ? "&unreviewed=1" : ""}`}>Start practice ({total} question{total === 1 ? "" : "s"})</Link></p>
+        <p><Link className="btn" href={`/practice/setup?course=${slug}`}>Start practice ({total} question{total === 1 ? "" : "s"})</Link></p>
       )}
 
       {course.units.map((u) => (

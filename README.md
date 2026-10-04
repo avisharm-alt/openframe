@@ -11,7 +11,7 @@ OpenFrame is independent and is **not affiliated with or endorsed by any univers
 | Workflow | Where |
 |---|---|
 | Browse universities, then their courses; search courses and topics, no account | `/`, `/universities/[slug]` |
-| Course page: topic counts, review-status filter, unofficial notice | `/courses/[slug]` |
+| Course page: published question counts and unofficial notice | `/courses/[slug]` |
 | Practice setup (topics, 5/10/20 presets, difficulty, mode, optional timer) | `/practice/setup` |
 | Practice mode (feedback + all-option explanations per answer) and self-test mode (nothing revealed until finish, scored server-side) | `/practice/[id]` |
 | Results with totals, topic table (with sample sizes), retry-missed | `/practice/[id]` |
@@ -55,7 +55,7 @@ Demo accounts (created only by `db:seed-demo`, refused in production): password 
 
 Demo flow: sign in as the **student**, write a question and submit it → sign in as the **reviewer**, open `/moderation`, review and approve it (authors can never review their own submissions) → practise it as a guest → report it → withdraw it from the moderation reports tab.
 
-All seeded questions are labelled **Demo** and **Unreviewed**. By default, practice uses only *student-reviewed* questions, so tick **Include unreviewed questions** on the setup page (or use "Include unreviewed" on a course page) to practise the demo set.
+All seeded questions are labelled **Demo**. Course pages and practice setup include all published questions. Review records remain available to moderators, while public pages do not display review labels or filters.
 
 ### Environment variables
 

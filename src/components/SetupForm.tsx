@@ -9,14 +9,13 @@ type Topic = { id: string; title: string; reviewedCount: number; unreviewedCount
 type Unit = { id: string; title: string; topics: Topic[] };
 const ACK_KEY = "openframe.ack.practice-notice";
 
-export function SetupForm({ course, units, defaultUnreviewed }: { course: { id: string; code: string; title: string; slug: string }; units: Unit[]; defaultUnreviewed: boolean }) {
+export function SetupForm({ course, units }: { course: { id: string; code: string; title: string; slug: string }; units: Unit[] }) {
   const router = useRouter();
   const allTopics = useMemo(() => units.flatMap((u) => u.topics), [units]);
   const [selected, setSelected] = useState<Set<string>>(new Set(allTopics.map((t) => t.id)));
   const [count, setCount] = useState(10);
   const [difficulty, setDifficulty] = useState("");
   const [mode, setMode] = useState<"practice" | "self_test">("practice");
-  const [includeUnreviewed, setIncludeUnreviewed] = useState(defaultUnreviewed);
   const [timer, setTimer] = useState(false);
   const [minutes, setMinutes] = useState(15);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +31,7 @@ export function SetupForm({ course, units, defaultUnreviewed }: { course: { id: 
     }
   }, []);
 
-  const available = allTopics.filter((t) => selected.has(t.id)).reduce((n, t) => n + t.reviewedCount + (includeUnreviewed ? t.unreviewedCount : 0), 0);
+  const available = allTopics.filter((t) => selected.has(t.id)).reduce((n, t) => n + t.reviewedCount + t.unreviewedCount, 0);
   const effective = Math.min(count, available);
 
   function toggle(id: string) {
@@ -55,7 +54,7 @@ export function SetupForm({ course, units, defaultUnreviewed }: { course: { id: 
         count,
         difficulty: difficulty || null,
         mode,
-        includeUnreviewed,
+        includeUnreviewed: true,
         timerMinutes: timer ? minutes : null,
       });
       addHistory({ id: r.id, courseCode: course.code, courseTitle: course.title, mode, createdAt: new Date().toISOString(), total: r.total });
@@ -80,7 +79,7 @@ export function SetupForm({ course, units, defaultUnreviewed }: { course: { id: 
           <div key={u.id}>
             <p className="label" style={{ marginBottom: 0 }}>{u.title}</p>
             {u.topics.map((t) => {
-              const n = t.reviewedCount + (includeUnreviewed ? t.unreviewedCount : 0);
+              const n = t.reviewedCount + t.unreviewedCount;
               return (
                 <label key={t.id} className="check">
                   <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggle(t.id)} />
@@ -99,10 +98,6 @@ export function SetupForm({ course, units, defaultUnreviewed }: { course: { id: 
             <button key={n} type="button" className={`btn ${count === n ? "" : "secondary"}`} aria-pressed={count === n} onClick={() => setCount(n)}>{n}</button>
           ))}
         </div>
-        <label className="check" style={{ marginTop: "0.8rem" }}>
-          <input type="checkbox" checked={includeUnreviewed} onChange={(e) => setIncludeUnreviewed(e.target.checked)} />
-          <span>Include unreviewed questions <span className="help">By default only student-reviewed questions are used. Unreviewed ones have not been checked by anyone else.</span></span>
-        </label>
         <label htmlFor="diff">Difficulty <span className="help">Contributor-assigned suggestions, not validated.</span></label>
         <select id="diff" value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
           <option value="">Any</option>

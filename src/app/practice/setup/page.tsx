@@ -5,7 +5,7 @@ import { ServiceError } from "@/lib/errors";
 
 export const metadata = { title: "Practice setup" };
 
-export default async function Setup({ searchParams }: { searchParams: Promise<{ course?: string; unreviewed?: string }> }) {
+export default async function Setup({ searchParams }: { searchParams: Promise<{ course?: string }> }) {
   const sp = await searchParams;
   if (!sp.course) notFound();
   let course;
@@ -22,7 +22,6 @@ export default async function Setup({ searchParams }: { searchParams: Promise<{ 
       <SetupForm
         course={{ id: course.id, code: course.code, title: course.title, slug: course.slug }}
         units={course.units}
-        defaultUnreviewed={sp.unreviewed === "1"}
       />
     </>
   );
