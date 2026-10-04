@@ -45,6 +45,8 @@ const POSITION_REF = /\b(option|choice|answer|statement)s?\s+\(?[a-e1-5]\)?(?![a
 const ALL_NONE = /\b(all|none)\s+of\s+(the\s+)?(above|below|these)\b|\bboth\s+of\s+the\s+above\b/i;
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+// Signs, decimal points and chemical notation distinguish valid science answers.
+const optionNorm = (s: string) => s.normalize("NFKC").toLowerCase().replace(/\u2212/g, "-").replace(/\s+/g, " ").trim();
 
 export type CheckIssue = { field: string; message: string };
 
@@ -66,7 +68,7 @@ export function structuralCheck(d: DraftInput): { errors: CheckIssue[]; warnings
     const key = `options.${i}`;
     if (!o.text) e(`${key}.text`, `Option ${i + 1} needs text.`);
     if (o.explanation.length < 10) e(`${key}.explanation`, `Option ${i + 1} needs an explanation (at least 10 characters).`);
-    const n = norm(o.text);
+    const n = optionNorm(o.text);
     if (n && seen.has(n)) e(`${key}.text`, `Option ${i + 1} duplicates another option.`);
     seen.add(n);
     if (ALL_NONE.test(o.text)) e(`${key}.text`, `Option ${i + 1}: avoid "all/none of the above" style options.`);
