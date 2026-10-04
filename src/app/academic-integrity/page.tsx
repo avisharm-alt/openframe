@@ -1,3 +1,4 @@
+import { config } from "@/lib/config";
 export const metadata = { title: "Academic integrity" };
 export default function Integrity() {
   return (
@@ -11,7 +12,9 @@ export default function Integrity() {
       </p>
       <h2>What this means in practice</h2>
       <ul>
-        <li>Uploads of any kind (PDF, documents, images) are disabled in the interface and rejected by the API.</li>
+        <li>Question submissions accept structured text only; files, images and documents are rejected by the API.</li>
+        <li>Instructor slides, handouts, notes, recordings and problem sets are usually copyrighted. Questions here are written against the public syllabus and learning outcomes and are never derived from instructor materials without the instructor’s permission.</li>
+        {config.notesUploadsEnabled && <li>Private course-note uploads, where enabled, are for your <b>own</b> notes only. Do not upload instructor slides, handouts, readings, recordings, or past tests and quizzes.</li>}
         <li>Every submission is reviewed by a person before publication. Automatic keyword and duplicate checks may flag concerns for reviewers but cannot guarantee detection.</li>
         <li>Anyone can report a question as possibly containing assessment content. Such reports go to a priority queue for a moderator. One report never deletes content automatically; moderators withdraw content promptly when warranted.</li>
         <li>Withdrawn questions disappear from new sessions, search, bookmarks and public responses. If one is withdrawn during your session you will see an “unavailable” notice and it is excluded from your score.</li>

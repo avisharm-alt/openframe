@@ -27,6 +27,6 @@ export const CHECKLIST_LABELS: Record<(typeof REVIEW_CHECKLIST)[number], string>
   one_answer: "There is exactly one defensible correct answer",
   explanations: "Explanations are correct and stand on their own",
   distractors: "Distractors are plausible and distinct",
-  not_assessment: "Does not appear to be actual university assessment content",
+  not_assessment: "Does not appear to be actual university assessment content, or copied from instructor materials",
   references: "No unsupported or fabricated reference claims",
 };

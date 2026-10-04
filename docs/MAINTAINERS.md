@@ -88,6 +88,10 @@ Schedule it (cron/systemd timer) and copy backups off the machine. Backups conta
 - [ ] Backup + restore rehearsed. Guest-session purge scheduled.
 - [ ] Privacy page reviewed against what you actually run (analytics, logs, proxy logs).
 
-## Course notes
+## Course notes (feature flag)
 
-Students upload private PDF or UTF-8 text notes from /course-notes. Reviewers and maintainers can download them in /moderation?tab=notes. Uploads do not generate or publish questions automatically. Files are stored in SQLite, covered by the same persistent volume and backups; removed uploads may remain in retained backups. Limits are 10 MB per file, 50 MB per account and five upload attempts per hour. Downloads are attachments; inspect files using your normal document tools.
+Course-notes uploads are **off by default** because instructor slides and notes are usually copyrighted. Set `OPENFRAME_NOTES_UPLOADS=1` to turn them on. While off, the nav link and the `/course-notes` page are gone, every `/api/course-notes` request (upload, download, delete, signed in or not) returns 404, the moderation "Course notes" tab is hidden, and files already uploaded are left exactly as they are in the database (nothing is deleted or modified; turning the flag back on restores access).
+
+When on, students upload private PDF or UTF-8 text notes from /course-notes after confirming that the file is their **own** notes, not instructor slides, handouts or past assessments (the confirmation text is stored with each upload; uploads made before this wording have no stored confirmation). Reviewers and maintainers can download them in /moderation?tab=notes. Uploads do not generate or publish questions automatically. Files are stored in SQLite, covered by the same persistent volume and backups; removed uploads may remain in retained backups. Limits are 10 MB per file, 50 MB per account and five upload attempts per hour. Downloads are attachments; inspect files using your normal document tools.
+
+To remove files that should not be held, delete the rows with SQL (`DELETE FROM course_note WHERE id = ?`); account deletion also removes a person's uploads.

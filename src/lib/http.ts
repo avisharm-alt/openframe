@@ -58,7 +58,7 @@ type Ctx<P, A> = { req: Request; actor: A; params: P; body: unknown };
 function build<P, A extends Actor | null>(level: Level, opts: Opts, fn: (ctx: Ctx<P, A>) => Promise<unknown> | unknown) {
   return async (req: Request, c: { params: Promise<P> }): Promise<Response> => {
     try {
-      const bad = guardRequest(req, { baseUrl: config.baseUrl, trustProxy: config.trustProxy });
+      const bad = guardRequest(req, { baseUrl: config.baseUrl, trustProxy: config.trustProxy, notesUploads: config.notesUploadsEnabled });
       if (bad) return NextResponse.json({ error: { code: bad.code, message: bad.message } }, { status: bad.status });
       const actor = await getActor(req.headers);
       if (level !== "none" && !actor) throw new ServiceError(401, "unauthenticated", "Please sign in to continue.");

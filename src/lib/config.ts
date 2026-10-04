@@ -62,6 +62,14 @@ export const config = {
       .map((e) => e.trim().toLowerCase())
       .filter(Boolean);
   },
+  /**
+   * Course-notes uploads. Off unless OPENFRAME_NOTES_UPLOADS=1: instructor slides and notes are usually copyrighted, so
+   * the feature must be switched on deliberately. While off, the nav link, the page and the whole API are 404 and
+   * existing uploads are left exactly as they are.
+   */
+  get notesUploadsEnabled() {
+    return bool(process.env.OPENFRAME_NOTES_UPLOADS);
+  },
   get signupLimitPerHour() {
     return num(process.env.AUTH_SIGNUP_LIMIT_PER_HOUR, 10);
   },
@@ -70,4 +78,4 @@ export const config = {
   },
 };
 
-export { ATTESTATION_TEXT } from "./attestation";
+export { ATTESTATION_TEXT, NOTES_ATTESTATION_TEXT } from "./attestation";

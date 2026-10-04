@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { config } from "@/lib/config";
 export const metadata = { title: "Privacy" };
 export default function Privacy() {
@@ -10,8 +11,14 @@ export default function Privacy() {
       <ul>
         <li><b>Guests:</b> practice sessions are stored on the server under a random identifier so answers can be scored, and a list of those identifiers is kept in your browser. Guest sessions are deleted after a retention period set by the maintainers (30 days by default).</li>
         <li><b>Accounts:</b> you sign in with Google. We store your email address and Google’s account identifier, a random display name (changeable; use a pseudonym), and your practice history and bookmarks. We discard the real name and profile photo Google provides, we do not store a password, and we do not collect student numbers or grades. We request only the basic sign-in permissions (email and profile) and never post to your Google account. Google learns that you use OpenFrame, under Google’s own privacy policy. The tokens Google issues are stored encrypted and are not otherwise used.</li>
-        <li><b>Course notes:</b> uploaded files, filenames, course selections and upload dates. Files are private to you and the review team. Upload only notes you can share, without personal information. You can remove uploads from the Upload course notes page; deleting your account removes them too. Backups may retain removed files until the maintainer’s backup retention period ends.</li>
+        {config.notesUploadsEnabled ? (
+          <li><b>Course notes:</b> uploaded files, filenames, course selections, upload dates and a record of your confirmation that the file is your own notes (not instructor slides, handouts or past assessments). Files are private to you and the review team. Upload only your own notes, without personal information. You can remove uploads from the Upload course notes page; deleting your account removes them too. Backups may retain removed files until the maintainer’s backup retention period ends.</li>
+        ) : (
+          <li><b>Course notes:</b> uploads are currently switched off. Files uploaded earlier are kept privately, are not available through the site, and are deleted when you delete your account. To ask for a file to be removed sooner, use the <Link href="/content-removal">content removal</Link> page.</li>
+        )}
         <li><b>Contributions:</b> the question text and metadata you submit, your attestation, and review records. Public attribution is optional and off by default.</li>
+        <li><b>Reviewing:</b> if you are a reviewer, your display name and the date are shown publicly on each question you help verify, and a record of what you approved or edited is kept in the moderation audit log. Deleting your account removes your name from those labels (they then say “a former reviewer”).</li>
+        <li><b>Practice statistics:</b> answers are combined into totals per question (for example how many people answered, and how often each option was chosen) so reviewers can spot questions that may be flawed. Reviewers see only these totals, never an individual’s answers.</li>
         <li><b>Reports and course requests:</b> the text you send. For anonymous reports we store a keyed hash of your network address, only to limit spam and duplicate reports; the address itself is not stored.</li>
         <li><b>Cookies:</b> a session cookie when you sign in. Browser storage keeps guest history on your device. No advertising or tracking cookies are used.</li>
       </ul>

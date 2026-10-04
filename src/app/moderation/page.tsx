@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { currentActor } from "@/lib/session";
+import { config } from "@/lib/config";
 import { isMaintainer, isReviewer } from "@/lib/types";
 import { listCourseRequests, listEvents, queue, verificationProgress, verificationQueue } from "@/lib/services/moderation";
 import { listCourseNotes } from "@/lib/services/course-notes";
@@ -19,7 +20,7 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
   const sp = await searchParams;
   const tab = sp.tab ?? "submissions";
   const progress = verificationProgress(actor);
-  const tabs = [["submissions", "Submissions"], ["verify", `Needs verification (${progress.total - progress.verified})`], ["weak", "Weak items"], ["reports", "Reports"], ["notes", "Course notes"], ["requests", "Course requests"], ...(isMaintainer(actor) ? [["events", "Audit log"]] : [])];
+  const tabs = [["submissions", "Submissions"], ["verify", `Needs verification (${progress.total - progress.verified})`], ["weak", "Weak items"], ["reports", "Reports"], ...(config.notesUploadsEnabled ? [["notes", "Course notes"]] : []), ["requests", "Course requests"], ...(isMaintainer(actor) ? [["events", "Audit log"]] : [])];
   return (
     <>
       <h1>Moderation</h1>
@@ -31,7 +32,7 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
       {tab === "verify" && <Verify />}
       {tab === "weak" && <Weak />}
       {tab === "reports" && <ReportsPanel />}
-      {tab === "notes" && <Notes />}
+      {tab === "notes" && config.notesUploadsEnabled && <Notes />}
       {tab === "requests" && <Requests />}
       {tab === "events" && isMaintainer(actor) && <Events />}
     </>

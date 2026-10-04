@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getCourse } from "@/lib/services/catalog";
 import { ServiceError } from "@/lib/errors";
 import { COURSE_NOTICE, VERIFIED_EXPLAINER } from "@/lib/copy";
+import { config } from "@/lib/config";
 
 export default async function CoursePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -25,8 +26,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
 
       {total === 0 ? (
         <div className="notice warn" role="status">
-          This course has no published questions yet.{" "}
-          You can <Link href="/course-notes">upload course notes</Link>.
+          This course has no published questions yet.{config.notesUploadsEnabled && <> You can <Link href="/course-notes">upload your own course notes</Link>.</>}
         </div>
       ) : (
         <>

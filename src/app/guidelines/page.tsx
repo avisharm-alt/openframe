@@ -1,11 +1,16 @@
 import Link from "next/link";
+import { config } from "@/lib/config";
 export const metadata = { title: "Contribution guidelines" };
 export default function Guidelines() {
   return (
     <div style={{ maxWidth: "44rem" }}>
       <h1>Contribution guidelines</h1>
-      <h2>Uploading course notes</h2>
-      <p><Link href="/course-notes">Upload course notes</Link> as PDF or plain text files up to 10 MB. Share your own notes or material you have permission to share. Do not include exam or quiz questions or personal information. Files are private to you and the OpenFrame review team; uploading does not publish them or automatically generate questions.</p>
+      {config.notesUploadsEnabled && (
+        <>
+          <h2>Uploading course notes</h2>
+          <p><Link href="/course-notes">Upload course notes</Link> as PDF or plain text files up to 10 MB. Upload <b>your own</b> notes only: not instructor slides, handouts, readings, lecture recordings or past tests and quizzes, and nothing with exam or quiz questions or personal information. Files are private to you and the OpenFrame review team; uploading does not publish them or automatically generate questions.</p>
+        </>
+      )}
       <h2>What a good question looks like</h2>
       <ul>
         <li>Original wording, tied to a specific course topic and a specific learning objective.</li>
@@ -24,15 +29,18 @@ export default function Guidelines() {
       <h2>Rules</h2>
       <ul>
         <li>No professor-created exams, quizzes, tests, answer keys, screenshots, scans, copied or reconstructed questions. See <Link href="/academic-integrity">academic integrity</Link>.</li>
-        <li>Question drafts accept structured text only. Course notes use the separate upload form. Markdown and LaTeX are supported in questions; HTML, scripts and images are not.</li>
+        <li><b>Write against the public syllabus and learning outcomes.</b> Base questions on the course outline, published learning outcomes and standard textbook-level knowledge of the subject. Never derive questions from an instructor&apos;s slides, handouts, notes, recordings, problem sets or exam material unless the instructor has given you permission, and say so when you submit.</li>
+        <li>Question drafts accept structured text only{config.notesUploadsEnabled ? "; course notes use the separate upload form" : ""}. Markdown and LaTeX are supported in questions; HTML, scripts and images are not.</li>
         <li>You must confirm the originality and permission statement on every submission.</li>
         <li>Course association does not give you permission to reproduce lecture slides, textbook questions, or other protected material.</li>
       </ul>
-      <h2>Review</h2>
+      <h2>Review and verification</h2>
       <p>
-        Nothing is published immediately. Another student reviews against a checklist (attestation, mapping, one defensible answer, correct explanations, plausible distractors, no actual assessment
-        content, no unsupported references). You can see the status and any requested changes. Edits to a published question create a new revision that is reviewed again; the approved version stays live meanwhile.
-        You cannot review your own submissions.
+        Nothing is published immediately. Two different students review each submission against a checklist: each must have worked out the answer for themselves before looking at the key, and checks the
+        attestation, mapping, one defensible answer, correct explanations, plausible distractors, no actual assessment or instructor-material content, and no unsupported references.
+        Only after both approve is a question published and labelled <b>Verified</b>, showing who verified it and when. Reviewers&apos; display names are shown publicly on the questions they verify.
+        You can see the status and any requested changes. Edits to a published question, including corrections by a reviewer, create a new revision that is reviewed again; the approved version stays live meanwhile.
+        You cannot review a question you wrote or edited.
       </p>
     </div>
   );

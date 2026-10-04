@@ -17,7 +17,7 @@
 - **Self-test never leaks**: `getSessionState` only includes `reveal` for practice-mode answered items or finished sessions; the answer endpoint returns only `{saved:true}` in self-test mode.
 - **Guest sessions** are server-side (needed for server scoring) and addressed by an unguessable UUID; the browser keeps a local list for history. Signed-in sessions are private to the user (404 for anyone else).
 - **No authentication via client roles.** Roles are a DB column on Better Auth's `user` table with `input:false`; changed only by `npm run admin:grant`.
-- **Private course-note uploads**: authenticated multipart is allowed only at /api/course-notes, with a streamed request cap, 10 MB PDF/TXT limit, 50 MB account quota, and rate limit. Files are SQLite BLOBs, never rendered publicly; authenticated downloads are attachments available only to the owner and reviewers. Account deletion cascades to uploads. Other endpoints retain the JSON-only guard.
+- **Private course-note uploads** (behind `OPENFRAME_NOTES_UPLOADS`, off by default; 404 everywhere while off, existing files untouched, the uploader's "these are my own notes" confirmation stored per file): authenticated multipart is allowed only at /api/course-notes, with a streamed request cap, 10 MB PDF/TXT limit, 50 MB account quota, and rate limit. Files are SQLite BLOBs, never rendered publicly; authenticated downloads are attachments available only to the owner and reviewers. Account deletion cascades to uploads. Other endpoints retain the JSON-only guard.
 - **Single-process assumptions**: in-memory rate limiter; SQLite file. Fine for the MVP; document before scaling out.
 - Demo mode is isolated: `OPENFRAME_DEMO=1` is required to seed, seeding refuses in production, and a banner is shown.
 

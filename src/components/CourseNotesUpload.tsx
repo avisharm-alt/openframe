@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { NOTES_ATTESTATION_TEXT } from "@/lib/attestation";
 
 export function CourseNotesUpload({ courses }: { courses: { id: string; code: string; title: string; universityName: string }[] }) {
   const router = useRouter();
@@ -19,7 +20,7 @@ export function CourseNotesUpload({ courses }: { courses: { id: string; code: st
       const res = await fetch("/api/course-notes", { method: "POST", body: data });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error?.message ?? "Upload failed. Please try again.");
-      setSuccess("Your notes were uploaded. The OpenFrame team can now access them.");
+      setSuccess("Your notes were uploaded. The OpenFrame team can now access them. If they included anything that is not yours to share, remove them below.");
       form.reset();
       router.refresh();
     } catch (e) { setError(e instanceof Error ? e.message : "Upload failed. Please try again."); }
@@ -31,12 +32,12 @@ export function CourseNotesUpload({ courses }: { courses: { id: string; code: st
         <option value="" disabled>Choose a course</option>
         {courses.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.title} · {c.universityName}</option>)}
       </select>
-      <label htmlFor="notes-file">Course notes</label>
+      <label htmlFor="notes-file">Your course notes</label>
       <input id="notes-file" name="file" type="file" accept=".pdf,.txt,application/pdf,text/plain" required aria-describedby="notes-file-help" />
       <p id="notes-file-help" className="muted small">PDF or plain text · up to 10 MB per file.</p>
       <label style={{ display: "flex", gap: "0.65rem", alignItems: "start", margin: "1.25rem 0" }}>
-        <input type="checkbox" name="permission" value="true" required style={{ width: "auto", marginTop: "0.3rem" }} />
-        <span>I wrote these notes or have permission to share them with OpenFrame. They contain no exam or quiz questions or personal information.</span>
+        <input type="checkbox" name="ownNotes" value="true" required style={{ width: "auto", marginTop: "0.3rem" }} />
+        <span>{NOTES_ATTESTATION_TEXT}</span>
       </label>
       <button className="btn" disabled={!courses.length}>{busy ? "Uploading…" : "Upload course notes"}</button>
     </fieldset>

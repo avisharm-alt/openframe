@@ -4,11 +4,12 @@ import { config } from "@/lib/config";
 import { guardRequest } from "@/lib/guard";
 import { ServiceError } from "@/lib/errors";
 import { rateLimit } from "@/lib/ratelimit";
-import { MAX_NOTE_REQUEST_BYTES, saveCourseNote } from "@/lib/services/course-notes";
+import { MAX_NOTE_REQUEST_BYTES, requireNotesUploads, saveCourseNote } from "@/lib/services/course-notes";
 
 export async function POST(req: Request) {
   try {
-    const bad = guardRequest(req, { baseUrl: config.baseUrl, trustProxy: config.trustProxy });
+    requireNotesUploads(); // 404 while the feature is off, before anything else is looked at
+    const bad = guardRequest(req, { baseUrl: config.baseUrl, trustProxy: config.trustProxy, notesUploads: config.notesUploadsEnabled });
     if (bad) throw new ServiceError(bad.status, bad.code, bad.message);
     const actor = await getActor(req.headers);
     if (!actor) throw new ServiceError(401, "unauthenticated", "Sign in to upload course notes.");
@@ -31,6 +32,6 @@ export async function POST(req: Request) {
     } catch { throw new ServiceError(400, "invalid", "The upload could not be read. Please choose the file again."); }
     const file = form.get("file");
     if (!(file instanceof File) || form.getAll("file").length !== 1) throw new ServiceError(422, "invalid", "Choose one PDF or text file.");
-    return NextResponse.json(saveCourseNote(actor, String(form.get("courseId") ?? ""), file.name, Buffer.from(await file.arrayBuffer()), form.get("permission") === "true"), { status: 201, headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json(saveCourseNote(actor, String(form.get("courseId") ?? ""), file.name, Buffer.from(await file.arrayBuffer()), form.get("ownNotes") === "true"), { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (e) { return errorResponse(e); }
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listCourses, listUniversities } from "@/lib/services/catalog";
 import { CourseRequestForm } from "@/components/CourseRequestForm";
 import { CourseList } from "@/components/CourseList";
+import { config } from "@/lib/config";
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const q = ((await searchParams).q ?? "").trim().slice(0, 100);
@@ -63,7 +64,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
           <CourseRequestForm initialCode={q && courses.length === 0 ? q : ""} universities={universities} />
         </div>
       </details>
-      <p className="muted small">Or <Link href="/course-notes">upload course notes</Link> for courses that already exist.</p>
+      {config.notesUploadsEnabled && <p className="muted small">Or <Link href="/course-notes">upload your own course notes</Link> for courses that already exist.</p>}
     </>
   );
 }

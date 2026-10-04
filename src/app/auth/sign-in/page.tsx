@@ -9,7 +9,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
     <div style={{ maxWidth: "34rem" }}>
       <h1>Sign in</h1>
       <p className="muted">
-        Signing in saves your practice history across devices and lets you bookmark questions and upload course notes. Browsing and practising never require an account.
+        Signing in saves your practice history across devices and lets you bookmark questions{config.notesUploadsEnabled && " and upload your own course notes"}. Browsing and practising never require an account.
       </p>
       {failed && (
         <p className="notice bad" role="alert">

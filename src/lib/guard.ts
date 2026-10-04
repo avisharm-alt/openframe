@@ -1,5 +1,6 @@
 // Request guard applied to every /api request (via src/proxy.ts and again in apiHandler).
-// - Allows bounded multipart only at the signed-in course-notes endpoint.
+// - Allows bounded multipart only at the signed-in course-notes endpoint, and only while that feature is switched on
+//   (OPENFRAME_NOTES_UPLOADS); while it is off every write to /api/course-notes is a plain 404.
 // - Other endpoints accept structured JSON only.
 // - Caps body size.
 // - Blocks cross-origin state-changing requests (CSRF defence in depth on top of SameSite=Lax cookies).
@@ -10,13 +11,17 @@ const MAX_BODY_BYTES = 100_000;
 const MAX_NOTE_REQUEST_BYTES = 10 * 1024 * 1024 + 64 * 1024;
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-export function guardRequest(req: Request, opts: { baseUrl: string; trustProxy: boolean }): GuardResult {
+export function guardRequest(req: Request, opts: { baseUrl: string; trustProxy: boolean; notesUploads?: boolean }): GuardResult {
   if (!MUTATING.has(req.method)) return null;
+  const path = new URL(req.url).pathname;
+  if (!opts.notesUploads && (path === "/api/course-notes" || path.startsWith("/api/course-notes/"))) {
+    return { status: 404, code: "not_found", message: "Not found" };
+  }
   const h = req.headers;
   const ct = (h.get("content-type") || "").toLowerCase();
   const len = Number(h.get("content-length") || "0");
   const hasBody = len > 0 || h.has("transfer-encoding");
-  const noteUpload = req.method === "POST" && new URL(req.url).pathname === "/api/course-notes" && ct.startsWith("multipart/form-data;");
+  const noteUpload = req.method === "POST" && path === "/api/course-notes" && ct.startsWith("multipart/form-data;");
 
   if (!noteUpload && (ct.startsWith("multipart/") || ct.startsWith("application/octet-stream") || /^(image|video|audio)\//.test(ct))) {
     return { status: 415, code: "uploads_not_supported", message: "File uploads are not supported. Submit structured text only." };
