@@ -99,7 +99,7 @@ async function authedPages() {
   const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 900 }, bypassCSP: true });
   const page = await ctx.newPage();
-  for (const p of ["/about", "/guidelines", "/academic-integrity", "/privacy", "/content-removal", "/auth/sign-in", "/saved", "/contribute"]) {
+  for (const p of ["/about", "/guidelines", "/academic-integrity", "/privacy", "/content-removal", "/auth/sign-in", "/saved", "/contribute", "/course-notes"]) {
     await page.goto(BASE + p);
     await axe(page, p);
   }
@@ -116,10 +116,138 @@ async function authedPages() {
   await page.getByRole("heading", { name: /Review:/ }).waitFor();
   await axe(page, "review panel");
   await shot(page, "review");
+  log((await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Upload course notes" }).count()) === 1, "notes flag on: nav link to course notes is present");
+  for (const tab of ["verify", "weak", "weak&show=all"]) {
+    await page.goto(`${BASE}/moderation?tab=${tab}`);
+    await page.getByRole("heading", { name: "Moderation" }).waitFor();
+    await axe(page, `moderation tab ${tab}`);
+  }
+  await shot(page, "moderation-verify");
   await page.goto(BASE + "/contribute/new");
   await page.getByRole("button", { name: "Show preview" }).click();
   await axe(page, "contribution editor");
   await shot(page, "editor");
+  await browser.close();
+}
+
+const DEMO_PASSWORD = "demo-password-123";
+const ALL_CHECKS = Object.fromEntries(["independent_answer", "attestation", "mapping", "one_answer", "explanations", "distractors", "not_assessment", "references"].map((k) => [k, true]));
+
+/** Two-reviewer verification driven through the real UI (keyboard shortcuts) -> badge -> verified-only practice default. */
+async function verificationFlow() {
+  const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
+  const errors: string[] = [];
+  const signIn = async (email: string) => {
+    const ctx = await browser.newContext({ viewport: { width: 1100, height: 900 }, bypassCSP: true });
+    const page = await ctx.newPage();
+    page.on("pageerror", (e) => errors.push(e.message));
+    const r = await ctx.request.post(BASE + "/api/auth/sign-in/email", { data: { email, password: DEMO_PASSWORD }, headers: { Origin: BASE } });
+    log(r.ok(), `[verify] ${email} signs in`);
+    return { ctx, page };
+  };
+  const reviewer = await signIn("demo-reviewer@example.test");
+  const maintainer = await signIn("demo-maintainer@example.test");
+  const page = reviewer.page;
+  const course = await (await page.request.get(BASE + "/api/courses/demo-102")).json();
+  log(course.verifiedCount === 0 && course.totalCount > 1, `[verify] demo-102 starts with 0 verified of ${course.totalCount}`);
+
+  // Reviewer works the queue with the keyboard.
+  await page.goto(`${BASE}/moderation?tab=verify&course=${course.id}`);
+  await page.getByRole("link", { name: /Start reviewing/ }).click();
+  await page.waitForURL(/\/moderation\/revisions\/[0-9a-f-]{36}\?list=verify/);
+  const firstId = page.url().match(/revisions\/([0-9a-f-]{36})/)![1];
+  await page.getByRole("heading", { name: /Review:/ }).waitFor();
+  log((await page.getByText("✓ Correct").count()) === 0, "[verify] the answer key is hidden until the reviewer chooses their own answer");
+  log(await page.getByLabel(/I independently worked out the correct answer/).isDisabled(), "[verify] the 'independently worked out' item cannot be ticked before choosing an answer");
+  await axe(page, "[verify] review workspace, key hidden");
+  await shot(page, "review-hidden");
+  await page.locator("main").click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press("1");
+  await page.getByText("✓ Correct").first().waitFor();
+  log(true, "[verify] pressing 1 chooses an answer and reveals the key");
+  await axe(page, "[verify] review workspace, key revealed");
+  await page.keyboard.press("t");
+  const ticked = await page.locator('form[aria-label="Review decision"] input[type="checkbox"]:checked').count();
+  log(ticked === 8, `[verify] t ticks the whole checklist (${ticked}/8)`);
+  await shot(page, "review-revealed");
+  await page.keyboard.press("a");
+  await page.waitForFunction((id) => !location.pathname.includes(id), firstId);
+  log(/\/moderation\/revisions\//.test(page.url()), "[verify] a approves and moves to the next question");
+  const q1 = (await (await page.request.get(`${BASE}/api/moderation/verification-queue?course=${course.id}`)).json()).queue.find((i: any) => i.revisionId === firstId);
+  log(q1?.approvals === 1 && q1.decidedByMe === true, `[verify] the approval was recorded (${q1?.approvals} of 2)`);
+
+  // Shortcuts can be switched off, never fire while typing, and n moves on.
+  await page.getByLabel(/^Keyboard shortcuts/).uncheck();
+  await page.locator("main").click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press("1");
+  log((await page.getByText("✓ Correct").count()) === 0, "[verify] with shortcuts switched off, keys do nothing");
+  await page.getByLabel(/^Keyboard shortcuts/).check();
+  await page.getByRole("button", { name: /Edit this question/ }).click();
+  await page.getByRole("heading", { name: "Edit this question" }).waitFor();
+  await page.getByLabel("Question stem").focus();
+  await page.keyboard.type("1ac");
+  log((await page.getByLabel("Question stem").inputValue()).startsWith("1ac") && (await page.getByRole("heading", { name: "Edit this question" }).isVisible()), "[verify] typing 1, a and c in a field types them and triggers no shortcut");
+  await axe(page, "[verify] reviewer edit form");
+  await shot(page, "review-edit");
+  await page.getByRole("button", { name: "Cancel" }).click();
+  const here = page.url();
+  await page.locator("main").click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press("n");
+  await page.waitForFunction((u) => location.href !== u, here);
+  log(true, "[verify] n goes to the next question");
+
+  // A different reviewer (the maintainer) gives the second approval.
+  const second = await maintainer.page.request.post(`${BASE}/api/moderation/revisions/${firstId}/review`, { data: { decision: "approve", checklist: ALL_CHECKS }, headers: { Origin: BASE } });
+  const secondBody = await second.json();
+  log(second.ok() && secondBody.verified === true, `[verify] second reviewer verifies it (${JSON.stringify(secondBody)})`);
+
+  // Learners: counts, badge, verified-only default.
+  const guestCtx = await browser.newContext({ viewport: { width: 1100, height: 900 }, bypassCSP: true });
+  const guest = await guestCtx.newPage();
+  guest.on("pageerror", (e) => errors.push(e.message));
+  await guest.goto(`${BASE}/courses/demo-102`);
+  await guest.getByText(new RegExp(`1 of ${course.totalCount} questions? verified`)).waitFor();
+  log(true, `[verify] course page shows "1 of ${course.totalCount} questions verified"`);
+  await axe(guest, "[verify] course page with verified counts");
+  await shot(guest, "course-verified");
+  await guest.getByRole("link", { name: /Practice verified questions/ }).click();
+  await guest.waitForURL(/\/practice\/setup\?course=demo-102$/);
+  const toggle = guest.getByLabel(/Include unverified questions/);
+  log(!(await toggle.isChecked()), "[verify] practice setup leaves 'Include unverified questions' unticked by default");
+  await axe(guest, "[verify] practice setup, verified only");
+  await guest.getByRole("button", { name: /^Start/ }).click();
+  await guest.waitForURL(/\/practice\/[0-9a-f-]{36}$/);
+  await guest.getByText(/Question 1 of 1/).waitFor();
+  log(true, "[verify] a default session holds only the 1 verified question");
+  const meta = await guest.locator(".prov").first().innerText();
+  log((await guest.locator(".prov .badge.ok").first().innerText()).includes("Verified"), "[verify] the question shows a Verified badge");
+  log(/Verified by Demo (Reviewer|Maintainer) and Demo (Reviewer|Maintainer) on \d{4}-\d{2}-\d{2}/.test(meta), `[verify] the badge names both reviewers and the date (“${meta.split("\n").slice(0, 3).join(" | ")}”)`);
+  await axe(guest, "[verify] practice question with Verified badge");
+  await shot(guest, "session-verified");
+
+  // Opting in brings the unverified questions back, labelled.
+  await guest.goto(`${BASE}/practice/setup?course=demo-102`);
+  await guest.getByRole("button", { name: "5", exact: true }).click();
+  await guest.getByText(/Only 1 question is available for these topics; your session will have 1/).waitFor();
+  await guest.getByLabel(/Include unverified questions/).check();
+  await guest.getByText(new RegExp(`Up to 5 questions from ${course.totalCount} available`)).waitFor();
+  log(true, "[verify] ticking 'Include unverified questions' makes every question available");
+  await axe(guest, "[verify] practice setup, unverified included");
+  await guest.getByRole("button", { name: /^Start/ }).click();
+  await guest.waitForURL(/\/practice\/[0-9a-f-]{36}$/);
+  await guest.getByText(/Question 1 of 5/).waitFor();
+  const labels = new Set<string>();
+  for (let i = 0; i < 5; i++) {
+    labels.add((await guest.locator(".prov .badge:not(.demo)").first().innerText()).trim());
+    if (i < 4) {
+      await guest.locator('input[type="radio"]').first().check();
+      await guest.getByRole("button", { name: "Check answer" }).click();
+      await guest.getByLabel("Feedback").waitFor();
+      await guest.getByRole("button", { name: "Next" }).click();
+    }
+  }
+  log([...labels].some((l) => /^Unverified/.test(l)), `[verify] unverified questions are labelled (${[...labels].join(" / ")})`);
+  log(errors.length === 0, `[verify] no page errors${errors.length ? ": " + errors.slice(0, 3).join(" | ") : ""}`);
   await browser.close();
 }
 
@@ -167,6 +295,7 @@ async function prodStyleSignIn() {
   await guestFlow(1100, 900, "desktop");
   await guestFlow(375, 760, "mobile");
   await authedPages();
+  await verificationFlow();
   await darkPass();
   console.log(failures ? `\n${failures} check(s) failed` : "\nAll browser checks passed");
   process.exit(failures ? 1 : 0);

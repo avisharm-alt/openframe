@@ -9,6 +9,8 @@ export OPENFRAME_DEMO=1 BASE_URL="http://localhost:$PORT" TRUST_PROXY=0
 export AUTH_SECRET="e2e-only-secret-e2e-only-secret-e2e-only-secret"
 export AUTH_SIGNUP_LIMIT_PER_HOUR=1000 AUTH_SIGNIN_LIMIT_PER_MINUTE=1000
 export INITIAL_MAINTAINER_EMAILS=bootstrap@example.test
+# The demo server exercises the course-notes page with the feature flag ON; the production-style server below keeps it OFF (the default).
+export OPENFRAME_NOTES_UPLOADS=1
 if curl -sf "http://localhost:$PORT/" > /dev/null 2>&1; then echo "Port $PORT is already in use (stale server?). Stop it or set E2E_PORT." >&2; exit 1; fi
 rm -f "$DATABASE_PATH" "$DATABASE_PATH-wal" "$DATABASE_PATH-shm"
 npx tsx scripts/seed-demo.ts || exit 1
@@ -27,7 +29,7 @@ PROD_DB="${DATABASE_PATH%.db}-prod.db"
 rm -f "$PROD_DB" "$PROD_DB-wal" "$PROD_DB-shm"
 if curl -sf "http://localhost:$PORT2/" > /dev/null 2>&1; then echo "Port $PORT2 is already in use." >&2; exit 1; fi
 GOOGLE_CLIENT_ID="dummy-client-id.apps.googleusercontent.com" GOOGLE_CLIENT_SECRET="dummy-secret" \
-  OPENFRAME_DEMO=0 DATABASE_PATH="$PROD_DB" BASE_URL="http://localhost:$PORT2" NODE_ENV=production \
+  OPENFRAME_NOTES_UPLOADS=0 OPENFRAME_DEMO=0 DATABASE_PATH="$PROD_DB" BASE_URL="http://localhost:$PORT2" NODE_ENV=production \
   setsid node_modules/.bin/next start -p "$PORT2" > /tmp/openframe-e2e-server2.log 2>&1 &
 SERVER2=$!
 trap 'kill -- -$SERVER 2>/dev/null || kill $SERVER 2>/dev/null; kill -- -$SERVER2 2>/dev/null || kill $SERVER2 2>/dev/null' EXIT

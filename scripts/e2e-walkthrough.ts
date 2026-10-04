@@ -134,6 +134,24 @@ async function main() {
   check("a second, different reviewer publishes the question", approve2.status === 200 && approve2.json.published === true && approve2.json.verified === true, JSON.stringify(approve2.json));
   const pub = await guest.req("GET", `/api/questions/${qid}`);
   check("published question is publicly visible and reviewed, without key/explanations", pub.status === 200 && pub.json.reviewStatus === "student_reviewed" && !JSON.stringify(pub.json).match(/explanation|correctOption/), JSON.stringify(pub.json));
+  check("verified badge data names both reviewers and the date", JSON.stringify([...(pub.json.verifiedBy ?? [])].sort()) === JSON.stringify(["reviewer", "secondreviewer"]) && /^\d{4}-\d{2}-\d{2}T/.test(pub.json.reviewedAt ?? ""), JSON.stringify(pub.json));
+  const author_name = (await author.c.req("GET", "/api/me")).json.user?.name;
+  check("the author is not among the verifiers", !(pub.json.verifiedBy ?? []).includes(author_name));
+
+  // --- verified vs total on the course, and the verified-only default
+  const detail2 = (await guest.req("GET", `/api/courses/${demo.slug}`)).json as any;
+  check("course reports verified vs total counts", detail2.verifiedCount === 1 && detail2.totalCount === detail2.unverifiedCount + 1 && detail2.unverifiedCount >= 8, JSON.stringify([detail2.verifiedCount, detail2.unverifiedCount, detail2.totalCount]));
+  const html = await (await fetch(`${BASE}/courses/${demo.slug}`)).text();
+  const pageText = html.replace(/<!--.*?-->/g, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+  check("course page says how many questions are verified", pageText.includes(`${detail2.verifiedCount} of ${detail2.totalCount} questions verified`), pageText.slice(0, 400));
+  const dflt = await guest.req("POST", "/api/sessions", { courseId: detail.id, count: 50, mode: "practice" });
+  check("practice defaults to verified questions only when the option is left out", dflt.status === 200 && dflt.json.total === 1, JSON.stringify(dflt.json));
+  const dfltState = (await guest.req("GET", `/api/sessions/${dflt.json.id}`)).json as any;
+  const dq = dfltState.items[0].question;
+  check("each question carries its verification badge data", dq.reviewStatus === "student_reviewed" && dq.verifiedBy.length === 2 && !!dq.reviewedAt, JSON.stringify(dq));
+  const mixed = await guest.req("POST", "/api/sessions", { courseId: detail.id, count: 50, mode: "practice", includeUnverified: true });
+  const mixedState = (await guest.req("GET", `/api/sessions/${mixed.json.id}`)).json as any;
+  check("opting in adds unverified questions, each labelled unverified", mixed.json.total > 1 && mixedState.items.some((i: any) => i.question.reviewStatus === "unreviewed" && i.question.verifiedBy.length === 0), JSON.stringify(mixed.json));
 
   // --- guest practice (default = student-reviewed only => exactly our question)
   const created1 = await guest.req("POST", "/api/sessions", { courseId: detail.id, topicIds: [topic.id], count: 10, mode: "practice", includeUnverified: false });
@@ -157,6 +175,51 @@ async function main() {
   const mid = JSON.stringify((await guest.req("GET", `/api/sessions/${stSession.json.id}`)).json);
   check("self-test leaks neither key nor explanations before completion", JSON.stringify(stAns.json) === '{"saved":true}' && !/explanation|correctOptionId|isCorrect/.test(mid) && !mid.includes('"reveal":{'), mid.slice(0, 200));
 
+  // --- verifying an existing (unverified) question with two independent reviewers
+  const vq = (await reviewer.c.req("GET", `/api/moderation/verification-queue?course=${detail.id}`)).json as any;
+  const target = vq.queue.find((i: any) => i.topic !== topic.title && !i.wroteIt && !i.decidedByMe);
+  check("unverified published questions appear in the needs-verification queue", !!target && vq.progress.total > vq.progress.verified, JSON.stringify(vq.progress));
+  const v1 = await reviewer.c.req("POST", `/api/moderation/revisions/${target.revisionId}/review`, { decision: "approve", checklist: allChecks });
+  check("first approval of a live question does not verify it", v1.status === 200 && v1.json.approvals === 1 && v1.json.verified === false, JSON.stringify(v1.json));
+  const v1b = await reviewer.c.req("POST", `/api/moderation/revisions/${target.revisionId}/review`, { decision: "approve", checklist: allChecks });
+  check("the same reviewer cannot approve a question twice", v1b.status === 409, JSON.stringify(v1b.json));
+  const missingKey = await reviewer2.c.req("POST", `/api/moderation/revisions/${target.revisionId}/review`, { decision: "approve", checklist: { ...allChecks, independent_answer: false } });
+  check("approval requires the 'I worked out the answer myself' checklist item", missingKey.status === 422, JSON.stringify(missingKey.json));
+  const v2 = await reviewer2.c.req("POST", `/api/moderation/revisions/${target.revisionId}/review`, { decision: "approve", checklist: allChecks });
+  check("a second reviewer verifies it", v2.status === 200 && v2.json.verified === true && v2.json.published === false, JSON.stringify(v2.json));
+  const afterVerify = (await guest.req("GET", `/api/courses/${demo.slug}`)).json as any;
+  check("course verified count goes up", afterVerify.verifiedCount === 2, String(afterVerify.verifiedCount));
+  const bm = (await bc2.req("GET", `/api/moderation/events?questionId=${target.questionId}`)).json.events as any[];
+  check("the audit log records who verified it", bm.filter((e) => e.action === "verified" && e.questionId === target.questionId).length === 2, JSON.stringify(bm.filter((e) => e.questionId === target.questionId).map((e) => e.action)));
+
+  // --- a reviewer corrects a verified question: new revision, needs two OTHER reviewers
+  const full = (await reviewer2.c.req("GET", `/api/moderation/revisions/${target.revisionId}`)).json as any;
+  const editBody = { stem: full.revision.stem + " (reworded for clarity)", learningObjective: full.revision.learning_objective, difficulty: full.revision.difficulty, options: full.options, correctOptionId: full.revision.correct_option_id, summary: "Reworded stem", attested: true };
+  check("students cannot edit questions through the review API", (await other.c.req("POST", `/api/moderation/revisions/${target.revisionId}/edit`, editBody)).status === 403);
+  const edited = await reviewer2.c.req("POST", `/api/moderation/revisions/${target.revisionId}/edit`, editBody);
+  check("a reviewer's edit creates a new revision", edited.status === 200 && edited.json.number === 2, JSON.stringify(edited.json));
+  check("the live question is unchanged until the edit is approved", ((await guest.req("GET", `/api/questions/${target.questionId}`)).json as any).stem === full.revision.stem);
+  check("an editor cannot approve their own edit", (await reviewer2.c.req("POST", `/api/moderation/revisions/${edited.json.revisionId}/review`, { decision: "approve", checklist: allChecks })).status === 403);
+  const e1 = await reviewer.c.req("POST", `/api/moderation/revisions/${edited.json.revisionId}/review`, { decision: "approve", checklist: allChecks });
+  const e2 = await bc2.req("POST", `/api/moderation/revisions/${edited.json.revisionId}/review`, { decision: "approve", checklist: allChecks });
+  const editedPub = (await guest.req("GET", `/api/questions/${target.questionId}`)).json as any;
+  check("two other reviewers approve the edit and it goes live, verified", e1.json.published === false && e2.json.published === true && editedPub.stem.endsWith("(reworded for clarity)") && editedPub.verifiedBy.length === 2, JSON.stringify([e1.json, e2.json]));
+
+  // --- aggregate item statistics (no individual answers)
+  const ia = await reviewer.c.req("GET", "/api/moderation/item-analysis?attempted=1");
+  const iaText = JSON.stringify(ia.json);
+  check("reviewers can read aggregate per-question statistics", ia.status === 200 && Array.isArray(ia.json.items) && ia.json.items.length >= 1 && ia.json.items.every((i: any) => typeof i.attempts === "number"), iaText.slice(0, 200));
+  check("statistics expose no user or session data", !iaText.includes(author.id) && !iaText.includes(sid) && !/userId|sessionId|selectedOption|answeredAt/.test(iaText));
+  check("students and guests cannot read the statistics", (await other.c.req("GET", "/api/moderation/item-analysis")).status === 403 && (await guest.req("GET", "/api/moderation/item-analysis")).status === 401);
+
+  // --- course-notes feature flag (this server runs with OPENFRAME_NOTES_UPLOADS=1; the production-style server runs with it off)
+  const home = await (await fetch(BASE + "/")).text();
+  check("with the notes flag on, the nav link is present", home.includes('href="/course-notes"'));
+  const notesForm = new FormData();
+  notesForm.append("file", new Blob(["my notes"], { type: "text/plain" }), "notes.txt");
+  const notesAnon = await fetch(BASE + "/api/course-notes", { method: "POST", headers: { Origin: BASE }, body: notesForm });
+  check("with the notes flag on, uploads still need an account", notesAnon.status === 401, String(notesAnon.status));
+
   // --- cross-user session access
   const priv = await author.c.req("POST", "/api/sessions", { courseId: detail.id, count: 2, mode: "practice", includeUnverified: true });
   check("another user cannot read someone's session", (await other.c.req("GET", `/api/sessions/${priv.json.id}`)).status === 404 && (await guest.req("GET", `/api/sessions/${priv.json.id}`)).status === 404);
@@ -178,7 +241,10 @@ async function main() {
   const afterFin = (await guest.req("POST", `/api/sessions/${live.json.id}/finish`)).json as any;
   check("withdrawn questions are excluded from scoring", afterFin.total === 0 && afterFin.unavailable === 1, JSON.stringify(afterFin));
   const newSess = await guest.req("POST", "/api/sessions", { courseId: detail.id, topicIds: [topic.id], count: 10, mode: "practice", includeUnverified: false });
-  check("new sessions exclude withdrawn content", newSess.status === 422 && newSess.json.error?.code === "no_questions", JSON.stringify(newSess.json));
+  check("new verified-only sessions exclude withdrawn content (and point to the unverified ones that remain)", newSess.status === 422 && newSess.json.error?.code === "no_verified_questions", JSON.stringify(newSess.json));
+  const withUnverified = await guest.req("POST", "/api/sessions", { courseId: detail.id, topicIds: [topic.id], count: 50, mode: "practice", includeUnverified: true });
+  const withUnverifiedState = (await guest.req("GET", `/api/sessions/${withUnverified.json.id}`)).json as any;
+  check("sessions that include unverified questions still exclude withdrawn content", withUnverified.status === 200 && !withUnverifiedState.items.some((i: any) => i.question?.questionId === qid), JSON.stringify(withUnverified.json));
   check("report resolved by withdrawal", ((await reviewer.c.req("GET", "/api/moderation/reports?state=resolved")).json.reports as any[]).some((r) => r.id === rep.json.id));
 
   // --- upload / CSRF probes

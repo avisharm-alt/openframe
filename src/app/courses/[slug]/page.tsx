@@ -30,7 +30,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
         </div>
       ) : (
         <>
-          <p className="course-counts" role="status">
+          <p role="status" style={{ fontSize: "1.05rem" }}>
             <b>{course.verifiedCount}</b> of <b>{total}</b> question{total === 1 ? "" : "s"} verified
             {course.unverifiedCount > 0 && <span className="muted"> · {course.unverifiedCount} unverified</span>}
           </p>

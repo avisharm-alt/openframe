@@ -120,7 +120,7 @@ export function SetupForm({ course, units, defaultUnverified }: { course: { id: 
               : "No questions match these settings."
             : effective < count
               ? `Only ${available} question${available === 1 ? " is" : "s are"} available for these topics; your session will have ${effective}. Questions are never repeated to fill a session.`
-              : `Up to ${effective} ${includeUnverified ? "" : "verified "}questions from ${available} available (difficulty filter may reduce this).`}
+              : `Up to ${effective} ${includeUnverified ? "" : "verified "}question${effective === 1 ? "" : "s"} from ${available} available (difficulty filter may reduce this).`}
         </p>
       </fieldset>
 
