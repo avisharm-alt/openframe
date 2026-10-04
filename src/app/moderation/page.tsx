@@ -3,13 +3,14 @@ import { currentActor } from "@/lib/session";
 import { isMaintainer, isReviewer } from "@/lib/types";
 import { listCourseRequests, listEvents, queue, verificationProgress, verificationQueue } from "@/lib/services/moderation";
 import { listCourseNotes } from "@/lib/services/course-notes";
+import { FLAG_LABELS, MIN_ATTEMPTS_TO_FLAG, MIN_ATTEMPTS_TO_SHOW_BREAKDOWN, TOO_EASY_ABOVE, TOO_HARD_BELOW, itemAnalysis } from "@/lib/services/item-analysis";
 import { ReportsPanel } from "@/components/ModerationPanels";
 
 export const metadata = { title: "Moderation" };
 
 const PAGE_SIZE = 50;
 
-export default async function Moderation({ searchParams }: { searchParams: Promise<{ tab?: string; course?: string; page?: string }> }) {
+export default async function Moderation({ searchParams }: { searchParams: Promise<{ tab?: string; course?: string; page?: string; show?: string }> }) {
   const actor = await currentActor();
   if (!actor) return <div className="notice"><Link href="/auth/sign-in">Sign in</Link> to continue.</div>;
   if (!isReviewer(actor)) {
@@ -18,7 +19,7 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
   const sp = await searchParams;
   const tab = sp.tab ?? "submissions";
   const progress = verificationProgress(actor);
-  const tabs = [["submissions", "Submissions"], ["verify", `Needs verification (${progress.total - progress.verified})`], ["reports", "Reports"], ["notes", "Course notes"], ["requests", "Course requests"], ...(isMaintainer(actor) ? [["events", "Audit log"]] : [])];
+  const tabs = [["submissions", "Submissions"], ["verify", `Needs verification (${progress.total - progress.verified})`], ["weak", "Weak items"], ["reports", "Reports"], ["notes", "Course notes"], ["requests", "Course requests"], ...(isMaintainer(actor) ? [["events", "Audit log"]] : [])];
   return (
     <>
       <h1>Moderation</h1>
@@ -28,6 +29,7 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
       </nav>
       {tab === "submissions" && <Submissions actorId={actor.id} role={actor.role} />}
       {tab === "verify" && <Verify />}
+      {tab === "weak" && <Weak />}
       {tab === "reports" && <ReportsPanel />}
       {tab === "notes" && <Notes />}
       {tab === "requests" && <Requests />}
@@ -116,6 +118,53 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
             <span className="small muted">Page {page} of {pages}</span>
             {page < pages && <Link href={href({ page: String(page + 1) })}>Next page →</Link>}
           </nav>
+        )}
+      </>
+    );
+  }
+  function Weak() {
+    const showAll = sp.show === "all";
+    const items = itemAnalysis(actor!, showAll ? { withAttemptsOnly: true } : { flaggedOnly: true });
+    return (
+      <>
+        <p>
+          Questions are flagged for re-review when they have at least {MIN_ATTEMPTS_TO_FLAG} answered attempts and either more than {TOO_EASY_ABOVE * 100}% or fewer than {TOO_HARD_BELOW * 100}% of answers
+          are correct, or a wrong option is picked more often than the key. Open a flagged question to check the key and edit it if needed; an edit becomes a new revision that two other reviewers approve.
+        </p>
+        <p className="small muted">
+          Only totals are shown, for the live version of each question, never any individual student&apos;s answers. The per-option breakdown appears once a question has {MIN_ATTEMPTS_TO_SHOW_BREAKDOWN} attempts.
+          Flags are prompts for a human look, not proof that a question is wrong: a question can be easy, or hard, and still be right.
+        </p>
+        <nav aria-label="Which questions" className="row" style={{ margin: "0.5rem 0" }}>
+          <Link href="/moderation?tab=weak" aria-current={!showAll ? "page" : undefined} className="btn small secondary">Flagged only</Link>
+          <Link href="/moderation?tab=weak&show=all" aria-current={showAll ? "page" : undefined} className="btn small secondary">All questions with attempts</Link>
+        </nav>
+        {items.length === 0 ? (
+          <p className="muted">{showAll ? "No attempts have been recorded yet." : "No questions are flagged. Flags need enough attempts first."}</p>
+        ) : (
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Table (scrollable)">
+            <table>
+              <thead><tr><th scope="col">Question</th><th scope="col">Attempts</th><th scope="col">% correct</th><th scope="col">How often each option was picked</th><th scope="col">Flags</th><th scope="col"><span className="sr-only">Open</span></th></tr></thead>
+              <tbody>
+                {items.map((q) => (
+                  <tr key={q.questionId}>
+                    <td>{q.courseCode} · {q.stem.length > 90 ? q.stem.slice(0, 90) + "…" : q.stem} <span className="badge">{q.verified ? "verified" : "unverified"}</span></td>
+                    <td>{q.attempts}</td>
+                    <td>{q.percentCorrect === null ? "–" : `${q.percentCorrect}%`}</td>
+                    <td>
+                      {q.options[0]?.picks === null ? <span className="muted">Fewer than {MIN_ATTEMPTS_TO_SHOW_BREAKDOWN} attempts</span> : (
+                        <ol className="plain-list" style={{ margin: 0, paddingLeft: "1.2rem" }}>
+                          {q.options.map((o) => <li key={o.optionId}>{o.text.length > 40 ? o.text.slice(0, 40) + "…" : o.text}: {o.picks} ({o.share}%){o.isKey && <b> ✓ key</b>}</li>)}
+                        </ol>
+                      )}
+                    </td>
+                    <td>{q.flags.length === 0 ? "–" : q.flags.map((f) => <span key={f} className="badge demo">{FLAG_LABELS[f]}</span>)}</td>
+                    <td><Link href={`/moderation/revisions/${q.revisionId}`}>Open</Link></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </>
     );
