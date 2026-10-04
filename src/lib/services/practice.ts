@@ -4,6 +4,7 @@ import { getDb, uid, now } from "../db";
 import { ServiceError, conflict, invalid, notFound } from "../errors";
 import type { Actor } from "../types";
 import { PUBLISHED } from "./catalog";
+import { verifierNames } from "./verification";
 import { answerSchema, sessionCreateSchema } from "../validation";
 
 type CreateInput = z.infer<typeof sessionCreateSchema>;
@@ -78,8 +79,15 @@ export function createSession(actor: Actor | null, input: CreateInput) {
       sql += " AND r.difficulty = ?";
       params.push(input.difficulty);
     }
-    if (!input.includeUnreviewed) sql += " AND r.review_status = 'student_reviewed'";
+    // Default: verified questions only. Unverified ones are opt-in.
+    if (!input.includeUnverified) sql += " AND r.review_status = 'student_reviewed'";
     candidates = db.prepare(sql).all(...params) as typeof candidates;
+    if (!candidates.length && !input.includeUnverified) {
+      const unverified = (db.prepare(sql.replace("AND r.review_status = 'student_reviewed'", "")).all(...params) as unknown[]).length;
+      if (unverified) {
+        throw new ServiceError(422, "no_verified_questions", "No questions match those settings. No verified questions are available for them; choose “Include unverified questions” to practise the unverified ones.");
+      }
+    }
   }
 
   if (!candidates.length) throw new ServiceError(422, "no_questions", "No questions match those settings.");
@@ -95,7 +103,7 @@ export function createSession(actor: Actor | null, input: CreateInput) {
       actor?.id ?? null,
       input.mode,
       courseId,
-      JSON.stringify({ requested: input.count, difficulty: input.difficulty ?? null, includeUnreviewed: input.includeUnreviewed }),
+      JSON.stringify({ requested: input.count, difficulty: input.difficulty ?? null, includeUnverified: input.includeUnverified }),
       input.timerMinutes ? input.timerMinutes * 60 : null,
       now(),
     );
@@ -176,6 +184,7 @@ export type SessionItem = {
     aiGeneratedOn: string | null;
     reviewStatus: string;
     reviewedAt: string | null;
+    verifiedBy: string[];
     isDemo: boolean;
     topic: string;
     courseCode: string;
@@ -196,6 +205,7 @@ export type SessionItem = {
 export function getSessionState(id: string, actor: Actor | null) {
   const s = loadSession(id, actor);
   const items = loadItems(id);
+  const verifiers = verifierNames(items.map((i) => i.revisionId));
   const finished = s.state !== "in_progress";
   const out: SessionItem[] = items.map((i) => {
     const answer = i.attempted ? { selectedOptionId: i.selected, skipped: !!i.skipped } : null;
@@ -220,6 +230,7 @@ export function getSessionState(id: string, actor: Actor | null) {
         aiGeneratedOn: i.aiGeneratedOn,
         reviewStatus: i.reviewStatus,
         reviewedAt: i.reviewedAt,
+        verifiedBy: verifiers.get(i.revisionId) ?? [],
         isDemo: !!i.isDemo,
         topic: i.topic,
         courseCode: i.courseCode,

@@ -21,7 +21,7 @@ const seedCorrectText = (stem: string) => {
 
 describe("guest practice", () => {
   it("lets a guest complete a session and shows accurate results", () => {
-    const { id, total } = createSession(null, { courseId: ctx.demo101.courseId, count: 5, mode: "practice", includeUnreviewed: true });
+    const { id, total } = createSession(null, { courseId: ctx.demo101.courseId, count: 5, mode: "practice", includeUnverified: true });
     expect(total).toBe(5);
     let state = getSessionState(id, null);
     // answer 3 correctly, 1 wrongly, skip 1
@@ -42,19 +42,19 @@ describe("guest practice", () => {
     expect(state.items.every((i) => i.reveal)).toBe(true);
 
     // retry-missed pins only the missed ones and never repeats to fill
-    const retry = createSession(null, { retryFrom: id, count: 20, mode: "practice", includeUnreviewed: true });
+    const retry = createSession(null, { retryFrom: id, count: 20, mode: "practice", includeUnverified: true });
     expect(retry.total).toBe(2);
   });
 
   it("never repeats questions to fill a session when fewer match", () => {
-    const r = createSession(null, { courseId: ctx.demo101.courseId, count: 50, mode: "practice", includeUnreviewed: true });
+    const r = createSession(null, { courseId: ctx.demo101.courseId, count: 50, mode: "practice", includeUnverified: true });
     expect(r.total).toBe(8);
     const items = getSessionState(r.id, null).items;
     expect(new Set(items.map((i) => i.question!.questionId)).size).toBe(8);
   });
 
   it("excludes unreviewed questions by default", () => {
-    expect(() => createSession(null, { courseId: ctx.demo101.courseId, count: 5, mode: "practice", includeUnreviewed: false })).toThrow(/No questions match/);
+    expect(() => createSession(null, { courseId: ctx.demo101.courseId, count: 5, mode: "practice", includeUnverified: false })).toThrow(/No questions match/);
   });
 });
 
@@ -62,7 +62,7 @@ describe("shuffling", () => {
   it("never changes the correct answer or explanation mapping", () => {
     const orders = new Set<string>();
     for (let n = 0; n < 15; n++) {
-      const { id } = createSession(null, { courseId: ctx.demo101.courseId, count: 8, mode: "practice", includeUnreviewed: true });
+      const { id } = createSession(null, { courseId: ctx.demo101.courseId, count: 8, mode: "practice", includeUnverified: true });
       for (const item of getSessionState(id, null).items) {
         const q = item.question!;
         orders.add(q.options.map((o) => o.id).join());
@@ -84,7 +84,7 @@ describe("shuffling", () => {
 
 describe("self-test", () => {
   it("does not leak keys or explanations before completion", () => {
-    const { id } = createSession(null, { courseId: ctx.demo101.courseId, count: 3, mode: "self_test", includeUnreviewed: true });
+    const { id } = createSession(null, { courseId: ctx.demo101.courseId, count: 3, mode: "self_test", includeUnverified: true });
     const state = getSessionState(id, null);
     const resp = answerQuestion(id, null, { sessionQuestionId: state.items[0].id, optionId: state.items[0].question!.options[0].id });
     expect(resp).toEqual({ saved: true });
@@ -106,7 +106,7 @@ describe("authorization and delivery", () => {
   it("keeps signed-in sessions private to their owner", () => {
     const a = makeUser(db, "Alice");
     const b = makeUser(db, "Bob");
-    const { id } = createSession(a, { courseId: ctx.demo101.courseId, count: 2, mode: "practice", includeUnreviewed: true });
+    const { id } = createSession(a, { courseId: ctx.demo101.courseId, count: 2, mode: "practice", includeUnverified: true });
     expect(() => getSessionState(id, b)).toThrow(/not found/i);
     expect(() => getSessionState(id, null)).toThrow(/not found/i);
     expect(() => getResults(id, b)).toThrow();
@@ -121,7 +121,7 @@ describe("authorization and delivery", () => {
     expect(() => getPublicQuestion(draftId)).toThrow(/not found/i);
     expect(() => addBookmark(author, draftId)).toThrow(/not found/i);
     const before = listCourses("DEMO-101")[0];
-    expect(before.reviewedCount + before.unreviewedCount).toBe(8);
+    expect(before.verifiedCount + before.unverifiedCount).toBe(8);
     // public view of a published question has no key or explanations
     const published = getPublicQuestion(ctx.demo101.questionIds[0]);
     expect(JSON.stringify(published)).not.toMatch(/explanation|correct/i);
@@ -132,7 +132,7 @@ describe("authorization and delivery", () => {
     const { withdrawQuestion } = await import("@/lib/services/moderation");
     const user = makeUser(db, "Learner");
     addBookmark(user, ctx.demo101.questionIds[0]);
-    const { id } = createSession(user, { courseId: ctx.demo101.courseId, count: 4, mode: "practice", includeUnreviewed: true });
+    const { id } = createSession(user, { courseId: ctx.demo101.courseId, count: 4, mode: "practice", includeUnverified: true });
     const state = getSessionState(id, user);
     const victim = state.items[0];
     const victimQ = victim.question!.questionId;
@@ -150,7 +150,7 @@ describe("authorization and delivery", () => {
     expect(() => addBookmark(user, victimQ)).toThrow();
     // no new session can include it
     for (let i = 0; i < 10; i++) {
-      const s = createSession(null, { courseId: ctx.demo101.courseId, count: 50, mode: "practice", includeUnreviewed: true });
+      const s = createSession(null, { courseId: ctx.demo101.courseId, count: 50, mode: "practice", includeUnverified: true });
       expect(getSessionState(s.id, null).items.some((x) => x.question?.questionId === victimQ)).toBe(false);
     }
     void publishNew;

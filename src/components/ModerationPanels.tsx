@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { CHECKLIST_LABELS, REVIEW_CHECKLIST } from "@/lib/types";
-import { STRUCTURAL_CHECK_NOTE, STUDENT_REVIEWED_EXPLAINER } from "@/lib/copy";
+import { STRUCTURAL_CHECK_NOTE, VERIFIED_EXPLAINER } from "@/lib/copy";
 
 export function ReviewPanel({ revisionId, questionId }: { revisionId: string; questionId: string }) {
   const router = useRouter();
@@ -30,7 +30,7 @@ export function ReviewPanel({ revisionId, questionId }: { revisionId: string; qu
   return (
     <form className="card" onSubmit={(e) => e.preventDefault()} aria-label="Review decision">
       <h2 style={{ marginTop: 0 }}>Your review</h2>
-      <p className="small muted">{STUDENT_REVIEWED_EXPLAINER} {STRUCTURAL_CHECK_NOTE}</p>
+      <p className="small muted">{VERIFIED_EXPLAINER} {STRUCTURAL_CHECK_NOTE}</p>
       <fieldset>
         <legend>Checklist (all required to approve)</legend>
         {REVIEW_CHECKLIST.map((k) => (
@@ -43,7 +43,7 @@ export function ReviewPanel({ revisionId, questionId }: { revisionId: string; qu
       <textarea id="priv" style={{ minHeight: "4rem" }} value={privateNote} maxLength={1500} onChange={(e) => setPrivateNote(e.target.value)} />
       {error && <p role="alert" className="field-error">{error}</p>}
       <div className="row" style={{ marginTop: "1rem" }}>
-        <button className="btn" disabled={!all || busy} onClick={() => decide("approve")}>Approve &amp; publish as student-reviewed</button>
+        <button className="btn" disabled={!all || busy} onClick={() => decide("approve")}>Approve</button>
         <button className="btn secondary" disabled={busy || !publicNote.trim()} onClick={() => decide("request_changes")}>Request changes</button>
         <button className="btn danger" disabled={busy || !publicNote.trim()} onClick={() => decide("reject")}>Reject</button>
         <button className="btn secondary" type="button" onClick={withdraw}>Withdraw question…</button>

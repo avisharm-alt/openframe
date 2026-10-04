@@ -5,7 +5,7 @@ import { ServiceError } from "@/lib/errors";
 
 export const metadata = { title: "Practice setup" };
 
-export default async function Setup({ searchParams }: { searchParams: Promise<{ course?: string }> }) {
+export default async function Setup({ searchParams }: { searchParams: Promise<{ course?: string; unverified?: string }> }) {
   const sp = await searchParams;
   if (!sp.course) notFound();
   let course;
@@ -18,10 +18,11 @@ export default async function Setup({ searchParams }: { searchParams: Promise<{ 
   return (
     <>
       <h1>Practice: {course.code}</h1>
-      <p className="muted">{course.title}</p>
+      <p className="muted">{course.title} · {course.verifiedCount} of {course.totalCount} questions verified</p>
       <SetupForm
         course={{ id: course.id, code: course.code, title: course.title, slug: course.slug }}
         units={course.units}
+        defaultUnverified={sp.unverified === "1"}
       />
     </>
   );

@@ -134,7 +134,7 @@ describe("review and publication", () => {
     const author = makeUser(db, "Author");
     const rev = makeUser(db, "Reviewer", "reviewer");
     const { questionId } = publishNew(db, author, rev, ...target());
-    const session = createSession(null, { courseId: ctx.demo101.courseId, topicIds: [topicId], count: 1, mode: "practice", includeUnreviewed: false });
+    const session = createSession(null, { courseId: ctx.demo101.courseId, topicIds: [topicId], count: 1, mode: "practice", includeUnverified: false });
     const before = getSessionState(session.id, null);
     expect(before.items[0].question!.stem).toMatch(/repeat steps/);
 
@@ -206,7 +206,7 @@ describe("reports and accounts", () => {
     const rev = makeUser(db, "Reviewer", "reviewer");
     const { questionId } = publishNew(db, author, rev, ...target());
     const { id: draftId } = createDraft(author, validDraft(...target()));
-    createSession(author, { courseId: ctx.demo101.courseId, count: 2, mode: "practice", includeUnreviewed: true });
+    createSession(author, { courseId: ctx.demo101.courseId, count: 2, mode: "practice", includeUnverified: true });
     deleteAccount(author.id);
     expect(db.prepare('SELECT 1 FROM "user" WHERE id = ?').get(author.id)).toBeUndefined();
     expect(db.prepare("SELECT 1 FROM practice_session WHERE user_id = ?").get(author.id)).toBeUndefined();

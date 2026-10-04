@@ -283,7 +283,7 @@ function ResultsView({ data, signedIn, bookmarked }: { data: State; signedIn: bo
   const retry = async () => {
     setBusy(true);
     try {
-      const s = await api<{ id: string }>("POST", "/api/sessions", { retryFrom: data.id, count: 50, mode: data.mode, includeUnreviewed: true });
+      const s = await api<{ id: string }>("POST", "/api/sessions", { retryFrom: data.id, count: 50, mode: data.mode });
       router.push(`/practice/${s.id}`);
     } catch (e) {
       setError((e as Error).message);

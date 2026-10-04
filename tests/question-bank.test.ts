@@ -13,13 +13,13 @@ describe("Western question bank import", () => {
     expect(db.prepare("SELECT id FROM question_revision WHERE check_description LIKE '%Human review is pending%'").all()).toHaveLength(0);
     const bio = getCourse("biochem-2280a");
     const chem = getCourse("chem-2213a");
-    expect(bio.reviewedCount + bio.unreviewedCount).toBe(150);
-    expect(chem.reviewedCount + chem.unreviewedCount).toBe(150);
+    expect(bio.verifiedCount + bio.unverifiedCount).toBe(150);
+    expect(chem.verifiedCount + chem.unverifiedCount).toBe(150);
     expect(bio.units).toHaveLength(3);
     expect(bio.units.flatMap((u) => u.topics)).toHaveLength(23);
     expect(chem.units).toHaveLength(10);
     expect(chem.units.map((u) => u.title)).toEqual([...new Set(organic.map((q) => q.unit))]);
-    const { id } = createSession(null, { courseId: chem.id, count: 5, mode: "practice", includeUnreviewed: true });
+    const { id } = createSession(null, { courseId: chem.id, count: 5, mode: "practice", includeUnverified: true });
     const session = getSessionState(id, null);
     expect(session.items).toHaveLength(5);
     expect(JSON.stringify(session)).not.toContain("sourceEvidence");

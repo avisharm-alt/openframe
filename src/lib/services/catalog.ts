@@ -1,5 +1,6 @@
 import { getDb } from "../db";
 import { notFound } from "../errors";
+import { verifierNames } from "./verification";
 
 /** SQL fragment: a question is publicly deliverable only if published with a live revision. */
 export const PUBLISHED = "q.state = 'published' AND q.live_revision_id IS NOT NULL";
@@ -16,8 +17,10 @@ export type CourseSummary = {
   isDemo: boolean;
   universityName: string;
   universitySlug: string;
-  reviewedCount: number;
-  unreviewedCount: number;
+  /** Published questions whose live revision two independent reviewers approved. */
+  verifiedCount: number;
+  unverifiedCount: number;
+  totalCount: number;
   topicMatches: string[];
 };
 
@@ -48,9 +51,9 @@ export function listCourses(q?: string, universitySlug?: string): CourseSummary[
       `SELECT c.id, c.slug, c.code, c.title, c.subject, c.description, c.is_demo AS isDemo,
         u.name AS universityName, u.slug AS universitySlug,
         (SELECT COUNT(*) FROM question q JOIN question_revision r ON r.id = q.live_revision_id
-           WHERE q.course_id = c.id AND ${PUBLISHED} AND r.review_status = 'student_reviewed') AS reviewedCount,
+           WHERE q.course_id = c.id AND ${PUBLISHED} AND r.review_status = 'student_reviewed') AS verifiedCount,
         (SELECT COUNT(*) FROM question q JOIN question_revision r ON r.id = q.live_revision_id
-           WHERE q.course_id = c.id AND ${PUBLISHED} AND r.review_status = 'unreviewed') AS unreviewedCount
+           WHERE q.course_id = c.id AND ${PUBLISHED} AND r.review_status = 'unreviewed') AS unverifiedCount
        FROM course c JOIN university u ON u.id = c.university_id
        WHERE c.status = 'active' AND u.enabled = 1
          AND (@universitySlug = '' OR u.slug = @universitySlug)
@@ -59,10 +62,11 @@ export function listCourses(q?: string, universitySlug?: string): CourseSummary[
               OR EXISTS (SELECT 1 FROM topic t WHERE t.course_id = c.id AND lower(t.title) LIKE @like ESCAPE '\\'))
        ORDER BY c.code`,
     )
-    .all({ term, like, universitySlug: universitySlug ?? "" }) as Omit<CourseSummary, "topicMatches">[];
+    .all({ term, like, universitySlug: universitySlug ?? "" }) as Omit<CourseSummary, "topicMatches" | "totalCount">[];
   return rows.map((r) => ({
     ...r,
     isDemo: !!r.isDemo,
+    totalCount: r.verifiedCount + r.unverifiedCount,
     topicMatches: term
       ? (
           db
@@ -73,7 +77,7 @@ export function listCourses(q?: string, universitySlug?: string): CourseSummary[
   }));
 }
 
-export type TopicInfo = { id: string; title: string; reviewedCount: number; unreviewedCount: number };
+export type TopicInfo = { id: string; title: string; verifiedCount: number; unverifiedCount: number; totalCount: number };
 export type CourseDetail = CourseSummary & { units: { id: string; title: string; topics: TopicInfo[] }[]; contexts: { label: string; academicYear: string | null }[] };
 
 export function getCourse(slug: string): CourseDetail {
@@ -84,15 +88,15 @@ export function getCourse(slug: string): CourseDetail {
   const topicStmt = db.prepare(
     `SELECT t.id, t.title,
        (SELECT COUNT(*) FROM question q JOIN question_revision r ON r.id = q.live_revision_id
-          WHERE q.topic_id = t.id AND ${PUBLISHED} AND r.review_status = 'student_reviewed') AS reviewedCount,
+          WHERE q.topic_id = t.id AND ${PUBLISHED} AND r.review_status = 'student_reviewed') AS verifiedCount,
        (SELECT COUNT(*) FROM question q JOIN question_revision r ON r.id = q.live_revision_id
-          WHERE q.topic_id = t.id AND ${PUBLISHED} AND r.review_status = 'unreviewed') AS unreviewedCount
+          WHERE q.topic_id = t.id AND ${PUBLISHED} AND r.review_status = 'unreviewed') AS unverifiedCount
      FROM topic t WHERE t.unit_id = ? ORDER BY t.position`,
   );
   const contexts = db
     .prepare("SELECT label, academic_year AS academicYear FROM course_context WHERE course_id = ?")
     .all(course.id) as { label: string; academicYear: string | null }[];
-  return { ...course, contexts, units: units.map((u) => ({ ...u, topics: topicStmt.all(u.id) as TopicInfo[] })) };
+  return { ...course, contexts, units: units.map((u) => ({ ...u, topics: (topicStmt.all(u.id) as Omit<TopicInfo, "totalCount">[]).map((t) => ({ ...t, totalCount: t.verifiedCount + t.unverifiedCount })) })) };
 }
 
 /** Course/topic pairs for the contribution form (active courses of enabled universities). */
@@ -121,8 +125,11 @@ export type PublicQuestion = {
   difficulty: string | null;
   aiProvenance: string | null;
   aiTool: string | null;
+  /** "student_reviewed" means verified by two independent reviewers; anything else is unverified. */
   reviewStatus: string;
   reviewedAt: string | null;
+  /** Display names of the reviewers who verified the live revision (empty when unverified). */
+  verifiedBy: string[];
   isDemo: boolean;
   courseId: string;
   courseCode: string;
@@ -141,12 +148,11 @@ export function getPublicQuestion(id: string): PublicQuestion {
        JOIN course c ON c.id = q.course_id JOIN topic t ON t.id = q.topic_id
        WHERE q.id = ? AND ${PUBLISHED}`,
     )
-    .get(id) as (Omit<PublicQuestion, "options" | "isDemo"> & { revisionId: string; isDemo: number }) | undefined;
+    .get(id) as (Omit<PublicQuestion, "options" | "isDemo" | "verifiedBy"> & { revisionId: string; isDemo: number }) | undefined;
   if (!row) throw notFound("Question not found");
   const options = db
     .prepare("SELECT id, text FROM question_option WHERE revision_id = ? ORDER BY position")
     .all(row.revisionId) as { id: string; text: string }[];
-  const { revisionId: _r, isDemo, ...rest } = row;
-  void _r;
-  return { ...rest, isDemo: !!isDemo, options };
+  const { revisionId, isDemo, ...rest } = row;
+  return { ...rest, isDemo: !!isDemo, verifiedBy: verifierNames([revisionId]).get(revisionId) ?? [], options };
 }

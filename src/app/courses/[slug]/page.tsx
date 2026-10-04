@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCourse } from "@/lib/services/catalog";
 import { ServiceError } from "@/lib/errors";
-import { COURSE_NOTICE } from "@/lib/copy";
+import { COURSE_NOTICE, VERIFIED_EXPLAINER } from "@/lib/copy";
 
 export default async function CoursePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -13,8 +13,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
     if (e instanceof ServiceError && e.status === 404) notFound();
     throw e;
   }
-  const count = (r: number, u: number) => r + u;
-  const total = count(course.reviewedCount, course.unreviewedCount);
+  const total = course.totalCount;
   return (
     <>
       <p className="small"><Link href={`/universities/${course.universitySlug}`}>← {course.universityName} courses</Link></p>
@@ -30,7 +29,24 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
           You can <Link href="/course-notes">upload course notes</Link>.
         </div>
       ) : (
-        <p><Link className="btn" href={`/practice/setup?course=${slug}`}>Start practice ({total} question{total === 1 ? "" : "s"})</Link></p>
+        <>
+          <p className="course-counts" role="status">
+            <b>{course.verifiedCount}</b> of <b>{total}</b> question{total === 1 ? "" : "s"} verified
+            {course.unverifiedCount > 0 && <span className="muted"> · {course.unverifiedCount} unverified</span>}
+          </p>
+          <p className="small muted">{VERIFIED_EXPLAINER}</p>
+          {course.verifiedCount > 0 ? (
+            <p className="row">
+              <Link className="btn" href={`/practice/setup?course=${slug}`}>Practice verified questions ({course.verifiedCount})</Link>
+              {course.unverifiedCount > 0 && <Link className="btn secondary" href={`/practice/setup?course=${slug}&unverified=1`}>Include unverified ({total} in all)</Link>}
+            </p>
+          ) : (
+            <div className="notice warn" role="note">
+              <p>No question in this course has been verified yet. Verification needs two independent student reviewers per question.</p>
+              <p><Link className="btn secondary" href={`/practice/setup?course=${slug}&unverified=1`}>Practise unverified questions ({total})</Link></p>
+            </div>
+          )}
+        </>
       )}
 
       {course.units.map((u) => (
@@ -39,7 +55,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
           <ul>
             {u.topics.map((t) => (
               <li key={t.id}>
-                {t.title} — <span className="muted">{count(t.reviewedCount, t.unreviewedCount)} question{count(t.reviewedCount, t.unreviewedCount) === 1 ? "" : "s"}</span>
+                {t.title} — <span className="muted">{t.verifiedCount} of {t.totalCount} verified</span>
               </li>
             ))}
           </ul>

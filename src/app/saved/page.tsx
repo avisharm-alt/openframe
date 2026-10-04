@@ -35,7 +35,7 @@ export default async function Saved() {
           <StartBookmarks />
           <ul>
             {bookmarks.map((b) => (
-              <li key={b.id}><span className="badge">{b.courseCode}</span>{b.topic}: {b.stem.length > 140 ? b.stem.slice(0, 140) + "…" : b.stem}</li>
+              <li key={b.id}><span className="badge">{b.courseCode}</span>{b.reviewStatus === "student_reviewed" ? <span className="badge ok">✓ Verified</span> : <span className="badge">Unverified</span>}{b.topic}: {b.stem.length > 140 ? b.stem.slice(0, 140) + "…" : b.stem}</li>
             ))}
           </ul>
         </>

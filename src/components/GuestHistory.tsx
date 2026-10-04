@@ -61,7 +61,7 @@ export function StartBookmarks() {
         className="btn"
         onClick={async () => {
           try {
-            const s = await api<{ id: string }>("POST", "/api/sessions", { fromBookmarks: true, count: 20, mode: "practice", includeUnreviewed: true });
+            const s = await api<{ id: string }>("POST", "/api/sessions", { fromBookmarks: true, count: 20, mode: "practice" });
             router.push(`/practice/${s.id}`);
           } catch (e) { setErr((e as Error).message); }
         }}

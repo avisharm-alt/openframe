@@ -97,7 +97,7 @@ export function ContributionEditor({ targets, initial }: { targets: Target[]; in
 
   const previewItem: SessionItem = useMemo(() => ({
     id: "preview", position: 0, status: "available", answer: null,
-    question: { stem: stem || "(stem)", options: options.map((o) => ({ id: o.id, text: o.text || "(option)" })), difficulty: difficulty || null, aiProvenance: prov || null, aiTool: tool || null, aiGeneratedOn: genOn || null, reviewStatus: "unreviewed", reviewedAt: null, isDemo: false, topic: topics.find((t) => t.id === effectiveTopic)?.title ?? "", courseCode: course?.code ?? "", questionId: "preview" },
+    question: { stem: stem || "(stem)", options: options.map((o) => ({ id: o.id, text: o.text || "(option)" })), difficulty: difficulty || null, aiProvenance: prov || null, aiTool: tool || null, aiGeneratedOn: genOn || null, reviewStatus: "unreviewed", reviewedAt: null, verifiedBy: [], isDemo: false, topic: topics.find((t) => t.id === effectiveTopic)?.title ?? "", courseCode: course?.code ?? "", questionId: "preview" },
     reveal: { correctOptionId: correct, isCorrect: null, explanations: Object.fromEntries(options.map((o) => [o.id, o.explanation || "(explanation)"])), learningObjective: objective, checkDescription: check, referenceText: refText || null, referenceUrl: refUrl || null },
   }), [stem, options, difficulty, prov, tool, genOn, correct, objective, check, refText, refUrl, effectiveTopic, topics, course]);
 

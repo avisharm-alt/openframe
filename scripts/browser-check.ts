@@ -46,7 +46,7 @@ async function guestFlow(width: number, height: number, label: string) {
   await page.waitForURL(/\/courses\/demo-101/);
   await axe(page, `[${label}] course page`);
   await shot(page, `${label}-course`);
-  await page.goto(`${BASE}/practice/setup?course=demo-101&unreviewed=1`);
+  await page.goto(`${BASE}/practice/setup?course=demo-101&unverified=1`);
   await axe(page, `[${label}] practice setup`);
   await shot(page, `${label}-setup`);
   await page.getByRole("button", { name: "Got it" }).click().catch(() => {});
@@ -127,12 +127,12 @@ async function darkPass() {
   const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 900 }, bypassCSP: true, colorScheme: "dark" });
   const page = await ctx.newPage();
-  for (const p of ["/", "/courses/demo-101?review=all", "/practice/setup?course=demo-101&unreviewed=1", "/about", "/auth/sign-in", "/contribute/new"]) {
+  for (const p of ["/", "/courses/demo-101", "/practice/setup?course=demo-101&unverified=1", "/about", "/auth/sign-in", "/contribute/new"]) {
     await page.goto(BASE + p);
     await axe(page, `[dark] ${p}`);
   }
   // A real session in dark mode: answer one question to check correct/incorrect colours.
-  const res = await page.request.post(BASE + "/api/sessions", { data: { courseId: (await (await page.request.get(BASE + "/api/courses/demo-101")).json()).id, count: 3, mode: "practice", includeUnreviewed: true }, headers: { Origin: BASE } });
+  const res = await page.request.post(BASE + "/api/sessions", { data: { courseId: (await (await page.request.get(BASE + "/api/courses/demo-101")).json()).id, count: 3, mode: "practice", includeUnverified: true }, headers: { Origin: BASE } });
   const { id } = await res.json();
   await page.goto(`${BASE}/practice/${id}`);
   await page.locator('input[type="radio"]').first().check();

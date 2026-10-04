@@ -6,7 +6,8 @@ import { openDb, migrate } from "@/lib/db";
 import { createDraft, submit } from "@/lib/services/contributions";
 import { reviewRevision, verificationQueue, listEvents, queue } from "@/lib/services/moderation";
 import { importBundledQuestionBank } from "@/lib/question-bank";
-import { getPublicQuestion } from "@/lib/services/catalog";
+import { getCourse, getPublicQuestion, listCourses } from "@/lib/services/catalog";
+import { createSession, getSessionState } from "@/lib/services/practice";
 import { meetsVerificationBar, tally } from "@/lib/services/verification";
 import { CHECKLIST_LABELS, REQUIRED_APPROVALS, REVIEW_CHECKLIST } from "@/lib/types";
 
@@ -56,6 +57,7 @@ describe("two-reviewer rule for new submissions", () => {
     expect(approve(r2, revisionId)).toMatchObject({ approvals: 2, verified: true, published: true });
     const q = getPublicQuestion(id);
     expect(q.reviewStatus).toBe("student_reviewed");
+    expect(q.verifiedBy.slice().sort()).toEqual(["Reviewer One", "Reviewer Two"]);
     expect(q.reviewedAt).toBeTruthy();
     db.close();
   });
@@ -120,6 +122,7 @@ describe("verifying the imported AI-generated questions", () => {
     expect(approve(r2, first.revisionId)).toMatchObject({ approvals: 2, verified: true, published: false });
     const pub = getPublicQuestion(first.questionId);
     expect(pub.reviewStatus).toBe("student_reviewed");
+    expect(pub.verifiedBy.slice().sort()).toEqual(["Reviewer One", "Reviewer Two"]);
     expect(verificationQueue(r1).some((i) => i.revisionId === first.revisionId)).toBe(false);
     expect(verificationQueue(r1).some((i) => i.revisionId === second.revisionId)).toBe(true);
 
@@ -191,6 +194,38 @@ describe("database guard", () => {
     expect(status("rev2").review_status).toBe("student_reviewed");
     const events = db.prepare("SELECT revision_id, action FROM moderation_event").all();
     expect(events).toEqual([{ revision_id: "rev1", action: "verification_reset" }]);
+    db.close();
+  });
+});
+
+describe("what learners see", () => {
+  it("counts verified vs total per course and defaults practice to verified questions only", () => {
+    const db = freshDb();
+    importBundledQuestionBank(db);
+    const bio = () => getCourse("biochem-2280a");
+    expect(bio()).toMatchObject({ verifiedCount: 0, unverifiedCount: 150, totalCount: 150 });
+    expect(listCourses().find((c) => c.slug === "chem-2213a")).toMatchObject({ verifiedCount: 0, totalCount: 150 });
+    // Nothing is verified yet: the default refuses and says why; opting in works.
+    expect(() => createSession(null, { courseId: bio().id, count: 5, mode: "practice", includeUnverified: false })).toThrow(/No verified questions/);
+    expect(createSession(null, { courseId: bio().id, count: 5, mode: "practice", includeUnverified: true }).total).toBe(5);
+
+    const [r1, r2] = ["One", "Two"].map((n) => makeUser(db, `Reviewer ${n}`, "reviewer"));
+    const item = verificationQueue(r1).find((i) => i.courseCode === "BIOCHEM 2280A")!;
+    approve(r1, item.revisionId);
+    approve(r2, item.revisionId);
+    expect(bio()).toMatchObject({ verifiedCount: 1, unverifiedCount: 149, totalCount: 150 });
+    expect(bio().units.flatMap((u) => u.topics).reduce((n, t) => n + t.verifiedCount, 0)).toBe(1);
+
+    const onlyVerified = createSession(null, { courseId: bio().id, count: 10, mode: "practice", includeUnverified: false });
+    expect(onlyVerified.total).toBe(1); // never padded with unverified questions
+    const state = getSessionState(onlyVerified.id, null);
+    expect(state.items[0].question).toMatchObject({ questionId: item.questionId, reviewStatus: "student_reviewed", verifiedBy: expect.arrayContaining(["Reviewer One", "Reviewer Two"]) });
+    expect(state.items[0].question!.reviewedAt).toBeTruthy();
+    // The default really is verified-only when the flag is left out.
+    expect(createSession(null, { courseId: bio().id, count: 10, mode: "practice" } as never).total).toBe(1);
+    const mixed = getSessionState(createSession(null, { courseId: bio().id, count: 50, mode: "practice", includeUnverified: true }).id, null);
+    expect(mixed.items).toHaveLength(50);
+    for (const i of mixed.items) expect(i.question!.reviewStatus === "student_reviewed").toBe(i.question!.verifiedBy.length === 2);
     db.close();
   });
 });

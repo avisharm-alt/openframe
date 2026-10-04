@@ -136,7 +136,7 @@ async function main() {
   check("published question is publicly visible and reviewed, without key/explanations", pub.status === 200 && pub.json.reviewStatus === "student_reviewed" && !JSON.stringify(pub.json).match(/explanation|correctOption/), JSON.stringify(pub.json));
 
   // --- guest practice (default = student-reviewed only => exactly our question)
-  const created1 = await guest.req("POST", "/api/sessions", { courseId: detail.id, topicIds: [topic.id], count: 10, mode: "practice", includeUnreviewed: false });
+  const created1 = await guest.req("POST", "/api/sessions", { courseId: detail.id, topicIds: [topic.id], count: 10, mode: "practice", includeUnverified: false });
   check("guest starts practice with reviewed questions only; count not padded", created1.status === 200 && created1.json.total === 1, JSON.stringify(created1.json));
   const sid = created1.json.id as string;
   const st = (await guest.req("GET", `/api/sessions/${sid}`)).json as any;
@@ -147,22 +147,22 @@ async function main() {
   check("practice mode reveals correctness and per-option explanations", ans.json.correct === false && ans.json.correctOptionId === optIds[0] && Object.keys(ans.json.explanations).length === 4, JSON.stringify(ans.json));
   const fin = await guest.req("POST", `/api/sessions/${sid}/finish`);
   check("results are accurate", fin.json.total === 1 && fin.json.incorrect === 1 && fin.json.correct === 0 && fin.json.missed.length === 1, JSON.stringify(fin.json));
-  const retry = await guest.req("POST", "/api/sessions", { retryFrom: sid, count: 10, mode: "practice", includeUnreviewed: true });
+  const retry = await guest.req("POST", "/api/sessions", { retryFrom: sid, count: 10, mode: "practice", includeUnverified: true });
   check("retry-missed starts a session with the missed question", retry.status === 200 && retry.json.total === 1);
 
   // --- self-test leak check
-  const stSession = await guest.req("POST", "/api/sessions", { courseId: detail.id, count: 3, mode: "self_test", includeUnreviewed: true });
+  const stSession = await guest.req("POST", "/api/sessions", { courseId: detail.id, count: 3, mode: "self_test", includeUnverified: true });
   const stState = (await guest.req("GET", `/api/sessions/${stSession.json.id}`)).json as any;
   const stAns = await guest.req("POST", `/api/sessions/${stSession.json.id}/answer`, { sessionQuestionId: stState.items[0].id, optionId: stState.items[0].question.options[0].id });
   const mid = JSON.stringify((await guest.req("GET", `/api/sessions/${stSession.json.id}`)).json);
   check("self-test leaks neither key nor explanations before completion", JSON.stringify(stAns.json) === '{"saved":true}' && !/explanation|correctOptionId|isCorrect/.test(mid) && !mid.includes('"reveal":{'), mid.slice(0, 200));
 
   // --- cross-user session access
-  const priv = await author.c.req("POST", "/api/sessions", { courseId: detail.id, count: 2, mode: "practice", includeUnreviewed: true });
+  const priv = await author.c.req("POST", "/api/sessions", { courseId: detail.id, count: 2, mode: "practice", includeUnverified: true });
   check("another user cannot read someone's session", (await other.c.req("GET", `/api/sessions/${priv.json.id}`)).status === 404 && (await guest.req("GET", `/api/sessions/${priv.json.id}`)).status === 404);
 
   // --- report -> withdrawal
-  const live = await guest.req("POST", "/api/sessions", { courseId: detail.id, topicIds: [topic.id], count: 10, mode: "practice", includeUnreviewed: false });
+  const live = await guest.req("POST", "/api/sessions", { courseId: detail.id, topicIds: [topic.id], count: 10, mode: "practice", includeUnverified: false });
   const rep = await guest.req("POST", "/api/reports", { questionId: qid, category: "prohibited", details: "Looks like it could be from a real test." });
   check("anyone can report a question", rep.status === 200, JSON.stringify(rep.json));
   check("a single report does not remove content", (await guest.req("GET", `/api/questions/${qid}`)).status === 200);
@@ -177,7 +177,7 @@ async function main() {
   check("answers to withdrawn questions are refused", afterAns.status === 409);
   const afterFin = (await guest.req("POST", `/api/sessions/${live.json.id}/finish`)).json as any;
   check("withdrawn questions are excluded from scoring", afterFin.total === 0 && afterFin.unavailable === 1, JSON.stringify(afterFin));
-  const newSess = await guest.req("POST", "/api/sessions", { courseId: detail.id, topicIds: [topic.id], count: 10, mode: "practice", includeUnreviewed: false });
+  const newSess = await guest.req("POST", "/api/sessions", { courseId: detail.id, topicIds: [topic.id], count: 10, mode: "practice", includeUnverified: false });
   check("new sessions exclude withdrawn content", newSess.status === 422 && newSess.json.error?.code === "no_questions", JSON.stringify(newSess.json));
   check("report resolved by withdrawal", ((await reviewer.c.req("GET", "/api/moderation/reports?state=resolved")).json.reports as any[]).some((r) => r.id === rep.json.id));
 

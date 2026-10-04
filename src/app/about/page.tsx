@@ -18,8 +18,10 @@ export default function About() {
       </ul>
       <h2>How questions get here</h2>
       <p>
-        Students write or generate questions (often with their own AI tools), check them, and submit them as structured text. Another student reviews each submission against a
-        checklist before it is published. This process does not guarantee accuracy. Anyone can report a problem
+        Students write or generate questions (often with their own AI tools), check them, and submit them as structured text.
+        Many of the questions in the bank so far are AI-generated and published <b>unverified</b>. A question is labelled <b>Verified</b> only after two different student reviewers, neither of them
+        the author, have each worked out the answer for themselves and checked it against a review checklist. The label shows who verified it and when. Verification is not expert or instructor
+        approval and does not guarantee accuracy. Practice uses verified questions by default; you can choose to include unverified ones. Anyone can report a problem
         on any question, and moderators can withdraw content promptly.
       </p>
       <h2>Licensing</h2>

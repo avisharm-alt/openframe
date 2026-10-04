@@ -154,7 +154,7 @@ export const sessionCreateSchema = z.strictObject({
   count: z.number().int().min(1).max(50).default(10),
   difficulty: z.enum(DIFFICULTIES).nullable().optional(),
   mode: z.enum(["practice", "self_test"]).default("practice"),
-  includeUnreviewed: z.boolean().default(false),
+  includeUnverified: z.boolean().default(false),
   timerMinutes: z.number().int().min(1).max(240).nullable().optional(),
   retryFrom: uuid.optional(),
   fromBookmarks: z.boolean().optional(),
