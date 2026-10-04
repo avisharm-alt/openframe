@@ -37,12 +37,12 @@ Never set `OPENFRAME_DEMO` on a live site. Never put these values in the reposit
 
 ## 6. Verify
 - `https://YOUR-URL/api/health` returns `{"status":"ok"}`.
-- `/` loads with the empty-state message (production starts empty by design).
+- `/` shows Western and U of T. Western contains BIOCHEM 2280A and CHEM 2213A with 150 questions each; U of T has no courses yet. The bundled bank imports automatically on first database use.
 - `/auth/sign-in` shows **Continue with Google**; sign in with the Google account listed in `INITIAL_MAINTAINER_EMAILS`; `/moderation` should then open.
 - Redeploy once and confirm you are still signed in and data persists (this proves the volume works).
 
 ## 7. Operating
 - One replica only. A redeploy can cause a short outage because a volume attaches to one instance at a time.
 - Backups: use any Railway volume-backup feature your plan offers **and** periodically copy the database file elsewhere. `npm run db:backup` writes a consistent copy; run it in a Railway shell (`railway ssh`) and download the file.
-- Courses and topics are added with SQL for now (see `docs/MAINTAINERS.md`). Do this deliberately with verified course data.
+- The Western starter bank imports automatically. To enrich its private source records from the original files, use `db:import-questions` with the production `DATABASE_PATH` (see `content/README.md`). Other courses and topics can be added with SQL using verified course data.
 - `INITIAL_MAINTAINER_EMAILS` only promotes people; removing an address does not demote anyone. Use `npm run admin:grant -- email student` to demote.

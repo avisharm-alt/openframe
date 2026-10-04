@@ -30,7 +30,7 @@ Initial launch: the maintainer can review others' contributions. **Nobody can re
 
 ## Adding courses
 
-The schema is University → Course → Unit → Topic. There is no admin UI in the MVP: insert rows with SQL (or extend `scripts/`). Real course codes/titles/mappings must be verified; do not invent outlines, instructors or syllabi. `course.is_demo=1` marks demonstration courses. A university is only visible when `university.enabled = 1`. Review the "Request a course" entries in `/moderation?tab=requests`.
+The schema is University → Course → Unit → Topic. The bundled Western bank imports automatically on first database use. See `content/README.md` for idempotent imports and retaining private source evidence. There is no course admin UI in the MVP: add other courses with SQL (or extend `scripts/`). Real course codes/titles/mappings must be verified; do not invent outlines, instructors or syllabi. `course.is_demo=1` marks demonstration courses. A university is only visible when `university.enabled = 1`. Review the "Request a course" entries in `/moderation?tab=requests`.
 
 ## Reviewing submissions (`/moderation`)
 

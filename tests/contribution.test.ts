@@ -66,6 +66,13 @@ describe("submission validation", () => {
     expect(() => createDraft(author, { ...validDraft(...target()), referenceUrl: "javascript:alert(1)" })).toThrow();
   });
 
+  it("preserves mathematical signs and decimal points when comparing options", () => {
+    const author = makeUser(db, "Science Author");
+    const draft = validDraft(...target());
+    ["-1", "+1", "0.1", "0.01"].forEach((text, i) => { draft.options[i].text = text; });
+    expect(submit(author, createDraft(author, draft).id, true).state).toBe("pending_review");
+  });
+
   it("flags possible assessment content and duplicates for reviewers without blocking", () => {
     const author = makeUser(db, "Author");
     const { id } = createDraft(author, validDraft(...target(), { stem: "From the midterm exam: which structure lets a program repeat steps?" }));

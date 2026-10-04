@@ -4,7 +4,7 @@ A free, open-source, nonprofit-oriented, **student-run question bank**, with uni
 
 OpenFrame is independent and is **not affiliated with or endorsed by any university** or instructor. It has no subscriptions, ads, paid tiers, payments or sale of data, and does not claim registered charitable status. It never accepts actual university assessments (see [Academic integrity](src/app/academic-integrity/page.tsx) and `docs/MAINTAINERS.md`).
 
-> **Status: MVP, not launched.** Production starts empty. Do not open real submissions until the owner confirms the content license and the real contact/review configuration (see "Launch requirements" below).
+> **Status: MVP, not launched.** Production automatically imports the 300 owner-supplied Western lecture questions; U of T starts empty. Do not open real submissions until the owner confirms the content license and the real contact/review configuration (see "Launch requirements" below).
 
 ## What works
 
@@ -96,13 +96,14 @@ No separate database server (and no MongoDB) is needed: data lives in one SQLite
 ## Layout
 
 ```
-migrations/            plain SQL (001 = Better Auth schema, regenerate with npm run db:gen-auth-sql; 002 = app schema)
+migrations/            plain SQL (001 = Better Auth schema, regenerate with npm run db:gen-auth-sql; 002 = app schema; 003 = universities; 004 = question-bank imports)
 src/lib/services/      all business rules (catalog, practice, contributions, moderation, reports, account) — framework-free, unit tested
 src/lib/http.ts        route wrapper: request guard, auth level, JSON parsing, error mapping
 src/lib/guard.ts       rejects uploads / non-JSON bodies / oversized / cross-origin writes (also run from src/proxy.ts)
 src/app/api/           thin route handlers
 src/app, src/components  UI
-scripts/               migrate, seed-demo, backup, grant-role, delete-user, purge-guest-sessions, e2e + browser checks
+content/western/       150 biochemistry + 150 organic chemistry questions, without private source evidence
+scripts/               migrate, import-questions, seed-demo, backup, grant-role, delete-user, purge-guest-sessions, e2e + browser checks
 docs/                  implementation plan/notes, maintainer guide, content-license proposal
 tests/                 vitest suites
 ```

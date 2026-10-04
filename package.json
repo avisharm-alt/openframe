@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts",
+    "db:import-questions": "tsx --env-file-if-exists=.env.local scripts/import-question-bank.ts",
     "db:seed-demo": "tsx --env-file-if-exists=.env.local scripts/seed-demo.ts",
     "db:backup": "tsx --env-file-if-exists=.env.local scripts/backup.ts",
     "admin:grant": "tsx --env-file-if-exists=.env.local scripts/grant-role.ts",
