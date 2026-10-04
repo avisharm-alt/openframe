@@ -2,6 +2,7 @@ import Link from "next/link";
 import { currentActor } from "@/lib/session";
 import { isMaintainer, isReviewer } from "@/lib/types";
 import { listCourseRequests, listEvents, queue } from "@/lib/services/moderation";
+import { listCourseNotes } from "@/lib/services/course-notes";
 import { ReportsPanel } from "@/components/ModerationPanels";
 
 export const metadata = { title: "Moderation" };
@@ -13,7 +14,7 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
     return <div className="notice bad" role="alert"><b>Permission denied.</b> The moderation area is only for reviewers and maintainers. Roles are granted by a maintainer.</div>;
   }
   const tab = (await searchParams).tab ?? "submissions";
-  const tabs = [["submissions", "Submissions"], ["reports", "Reports"], ["requests", "Course requests"], ...(isMaintainer(actor) ? [["events", "Audit log"]] : [])];
+  const tabs = [["submissions", "Submissions"], ["reports", "Reports"], ["notes", "Course notes"], ["requests", "Course requests"], ...(isMaintainer(actor) ? [["events", "Audit log"]] : [])];
   return (
     <>
       <h1>Moderation</h1>
@@ -23,6 +24,7 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
       </nav>
       {tab === "submissions" && <Submissions actorId={actor.id} role={actor.role} />}
       {tab === "reports" && <ReportsPanel />}
+      {tab === "notes" && <Notes />}
       {tab === "requests" && <Requests />}
       {tab === "events" && isMaintainer(actor) && <Events />}
     </>
@@ -54,6 +56,11 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
         </table>
       </div>
     );
+  }
+  function Notes() {
+    const notes = listCourseNotes(actor!, true);
+    if (!notes.length) return <p className="muted">No course notes uploaded yet.</p>;
+    return <ul>{notes.map((n) => <li key={n.id}><a href={"/api/course-notes/" + n.id}>{n.filename}</a> · {n.courseCode} · {n.createdAt.slice(0, 10)}</li>)}</ul>;
   }
   function Requests() {
     const rows = listCourseRequests(actor!) as { id: string; code: string; title: string; note: string; universityName: string | null; createdAt: string }[];
