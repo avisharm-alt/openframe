@@ -66,3 +66,8 @@ export function formatLocal(d: Date | string, tz: string): string {
 export function formatTime(d: Date | string, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz, hour: "numeric", minute: "2-digit" }).format(typeof d === "string" ? new Date(d) : d);
 }
+
+/** "Fri, Nov 6" for a "YYYY-MM-DD" date (no timezone shifting). */
+export function formatDay(date: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" }).format(new Date(date + "T00:00:00Z"));
+}

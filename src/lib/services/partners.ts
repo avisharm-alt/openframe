@@ -1,10 +1,10 @@
 import { getDb, now, uid } from "../db";
-import { conflict, invalid, notFound } from "../errors";
+import { conflict, forbidden, invalid, notFound } from "../errors";
 import { rateLimit } from "../ratelimit";
 import { decisionSchema, partnerApplySchema, partnerPatchSchema, partnerSchema, sitePatchSchema, siteSchema } from "../validation";
 import type { Actor } from "../types";
 import { logAudit } from "./audit";
-import { getChapterBySlug, getPartnerRef, requireCoordinator } from "./access";
+import { canActForPartner, getChapterBySlug, getPartnerRef, requireCoordinator } from "./access";
 
 export type Partner = { id: string; chapterId: string; name: string; description: string; excludedItems: string; status: "pending" | "approved" | "suspended"; active: boolean };
 type PRow = { id: string; chapter_id: string; name: string; description: string; excluded_items: string; status: Partner["status"]; active: number };
@@ -163,4 +163,20 @@ export function decideWorker(actor: Actor, partnerId: string, userId: string, ra
     db.prepare("DELETE FROM partner_member WHERE partner_id = ? AND user_id = ?").run(partnerId, userId);
   }
   logAudit(actor.id, `worker_${decision === "approved" ? "approved" : "removed"}`, { chapterId: p.chapterId, subjectType: "user", subjectId: userId, detail: { partnerId } });
+}
+
+/** Sites a worker (or coordinator) of the partner can post requests to. */
+export function listSitesFor(actor: Actor, partnerId: string): Site[] {
+  if (!canActForPartner(actor, partnerId)) throw forbidden("Agency worker access for this partner is required.");
+  return listSites(partnerId, { activeOnly: true });
+}
+
+/** Everything a chapter's coordinators manage about partners: all partners (any status) with their sites and workers. */
+export function listPartnersAdmin(actor: Actor, chapterId: string) {
+  requireCoordinator(actor, chapterId);
+  return listPartners(chapterId, { all: true }).map((p) => ({
+    ...p,
+    sites: listSites(p.id),
+    workers: getDb().prepare('SELECT m.user_id AS userId, u.name, u.email, m.status FROM partner_member m JOIN "user" u ON u.id = m.user_id WHERE m.partner_id = ? ORDER BY m.status, u.name').all(p.id) as { userId: string; name: string; email: string; status: string }[],
+  }));
 }

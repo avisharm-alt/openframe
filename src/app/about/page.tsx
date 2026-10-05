@@ -8,31 +8,32 @@ export default function About() {
     <div style={{ maxWidth: "44rem" }}>
       <h1>About OpenFrame</h1>
       <p>
-        OpenFrame is a free, open-source, student-run network that keeps care packages for people experiencing homelessness stocked, all year round. Student teams in <b>London, Ontario (Western)</b> and
-        <b> Oshawa, Ontario (Ontario Tech)</b> post exactly what they need. Neighbours pledge items they already have and either hand them to us at a public drop-off zone or ask for a pickup at their door. The
-        team counts the items in, assembles packages, and hands them out through partner agencies.
+        OpenFrame is a free, open-source, student-run link between <b>community partners</b> and <b>neighbours</b>. Frontline workers at partner agencies post the specific things the people they serve need
+        (“men’s winter boots, size 11, by Friday”). A neighbour who has them claims the request. Student teams in <b>London, Ontario (Western)</b> and <b>Oshawa, Ontario (Ontario Tech)</b> collect the item, or
+        take it from a drop-off zone, and deliver it to the agency. Agency staff hand it to the person. Our goal is to get an item from request to delivery in under 72 hours.
       </p>
       <h2>How it works</h2>
       <ol>
-        <li><b>See the live needs.</b> Each chapter’s board updates from its package templates and current stock, so it is always current. No drives, no stale lists.</li>
-        <li><b>Pledge what you have.</b> Sign in, choose items and quantities from open needs, then pick a pickup or a drop-off. We only ask for what is on the list.</li>
-        <li><b>We collect, count and assemble.</b> Two volunteers do every pickup. Coordinators count what actually arrived into stock, assemble packages from a template, and hand them to partner agencies.</li>
-        <li><b>You see the impact.</b> The <Link href="/impact">impact page</Link> shows packages handed off per week, items received and active volunteers, as counts only.</li>
+        <li><b>Partners ask.</b> A verified agency worker posts a request in under 30 seconds: the item, size, how many, when it is needed and where to deliver it. Requests are anonymous and never describe a person.</li>
+        <li><b>Neighbours claim.</b> Sign in, pick a request from the live <Link href="/">board</Link> and choose how to hand it over: a pickup from your address, or a drop-off at a public zone. If a pickup is not scheduled in time, the request goes back on the board.</li>
+        <li><b>Students move it.</b> Two volunteers do every pickup. A small shelf of common essentials lets us fill many requests the same day. Student teams deliver to the agency in batches on weekly shifts.</li>
+        <li><b>Partners confirm, and you see the result.</b> The agency confirms receipt, and your claim shows “Delivered to [agency] on [date]”. The <Link href="/impact">impact page</Link> leads with the median time from request to delivery.</li>
       </ol>
       <h2>What we never do</h2>
       <ul>
-        <li><b>We never record the people who receive packages.</b> No names, descriptions or locations. We record only which partner agency received a package and on what date.</li>
+        <li><b>We never record the people who receive items.</b> No names, descriptions or locations. A request records only the partner, the delivery site and the item.</li>
+        <li><b>Students never deal with recipients.</b> We deliver to agency staff, who hand items to the person.</li>
         <li><b>We never ask for money, take payments or show ads.</b> We do not sell or share data.</li>
         <li><b>We never share your address broadly.</b> A pickup address is encrypted, visible only to you, your chapter’s coordinators and the two volunteers assigned, from 24 hours before the window, and erased after the pickup. See <Link href="/privacy">Privacy</Link> and <Link href="/safety">Safety</Link>.</li>
       </ul>
       <h2>Independent and open</h2>
       <p>
-        OpenFrame is independent: it is not affiliated with or endorsed by any university, and it is not a registered charity. The application code is released under the MIT license. Chapters are data, not code, so any
-        campus can start one: see <code>docs/START-A-CHAPTER.md</code> in the repository.
+        OpenFrame is independent: it is not affiliated with or endorsed by any university, and it is not a registered charity. The application code is released under the MIT license. Chapters and partners are data,
+        not code, so any campus can start a chapter: see <code>docs/START-A-CHAPTER.md</code> and <code>docs/PARTNER-ONBOARDING.md</code> in the repository.
       </p>
       <h2>Partner agencies</h2>
       <p>{PARTNER_NOTICE}</p>
-      <p>See also: <Link href="/guidelines">guidelines</Link>, <Link href="/safety">safety</Link>, <Link href="/privacy">privacy</Link>.</p>
+      <p>See also: <Link href="/guidelines">guidelines</Link>, <Link href="/safety">safety</Link>, <Link href="/privacy">privacy</Link>, <Link href="/partner">for partners</Link>.</p>
     </div>
   );
 }

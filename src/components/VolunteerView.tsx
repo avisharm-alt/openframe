@@ -1,22 +1,24 @@
 "use client";
 import { useState } from "react";
 import { api } from "@/lib/api-client";
-import { formatLocal } from "@/lib/time";
-import { OUTCOME_REASONS, OUTCOME_REASON_LABELS, PLEDGE_STATUS_LABELS } from "@/lib/types";
+import { formatDay, formatLocal } from "@/lib/time";
+import { CLAIM_STATUS_LABELS, OUTCOME_REASONS, OUTCOME_REASON_LABELS } from "@/lib/types";
 import type { Slot, VolunteerPickup } from "@/lib/services/pickups";
+import type { DeliveryView } from "@/lib/services/deliveries";
+import type { MyShift, Occurrence } from "@/lib/services/shifts";
 import { ActionButton, Err, JsonForm, useRun } from "./forms";
-import { windowText } from "./MyPledges";
+import { windowText } from "./MyClaims";
 
 type Details = { address: string; notes: string; phone: string };
 
 function Address({ p }: { p: VolunteerPickup }) {
   const { busy, error, run } = useRun();
   const [d, setD] = useState<Details | null>(null);
-  if (p.status !== "scheduled" && p.status !== "pledged") return <p className="small muted">This pickup is closed, so its address is no longer shown.</p>;
+  if (p.status !== "scheduled" && p.status !== "claimed") return <p className="small muted">This pickup is closed, so its address is no longer shown.</p>;
   if (!p.addressVisibleNow) {
     return (
       <p className="private small">
-        {p.status === "pledged"
+        {p.status === "claimed"
           ? "The address is shown once the pickup is scheduled with two volunteers, from 24 hours before the window."
           : p.visibleFrom ? <>The address appears here from <b>{formatLocal(p.visibleFrom, p.timezone)}</b> (24 hours before the window).</> : "The address appears here 24 hours before the window."}
       </p>
@@ -61,20 +63,20 @@ function CouldNot({ p }: { p: VolunteerPickup }) {
 
 export function VolunteerCard({ p }: { p: VolunteerPickup }) {
   const [open, setOpen] = useState<"" | "couldnt" | "concern">("");
-  const closed = p.status !== "pledged" && p.status !== "scheduled";
+  const closed = p.status !== "claimed" && p.status !== "scheduled";
   return (
     <article className="vcard" aria-label={p.window ? `Pickup ${windowText(p.window, p.timezone)}` : "Pickup, window not confirmed"}>
       <p className="when">{p.window ? windowText(p.window, p.timezone) : "Window not confirmed yet"}</p>
       <p style={{ margin: "0 0 0.3rem" }}>
-        <span className={`status ${p.status}`}>{PLEDGE_STATUS_LABELS[p.status]}</span>{" "}
-        <span className="muted">{p.chapterName} · {p.units} item{p.units === 1 ? "" : "s"}</span>
+        <span className={`status ${p.status}`}>{CLAIM_STATUS_LABELS[p.status]}</span>{" "}
+        <span className="muted">{p.chapterName} · {p.units} × {p.label}</span>
       </p>
       <p style={{ margin: "0.2rem 0" }}>
         {p.partners.length ? <>Going with <b>{p.partners.join(", ")}</b>.</> : <b>No partner assigned yet.</b>} Pickups are always in pairs.
       </p>
       <Address p={p} />
       {closed ? (
-        <p className="small muted">{p.status === "collected" || p.status === "received" ? "Thank you. This pickup is complete." : `This pickup ended as “${PLEDGE_STATUS_LABELS[p.status]}”.`}</p>
+        <p className="small muted">{p.status === "collected" || p.status === "received" ? "Thank you. This pickup is complete." : `This pickup ended as “${CLAIM_STATUS_LABELS[p.status]}”.`}</p>
       ) : (
         <>
           <div className="actions">
@@ -93,7 +95,7 @@ export function VolunteerCard({ p }: { p: VolunteerPickup }) {
       </p>
       {open === "concern" && (
         <JsonForm
-          idPrefix={`rc-${p.pickupId}`} url="/api/reports" submit="Send to coordinators" extra={{ pledgeId: p.pledgeId }} success="Sent. Your coordinators will look at it."
+          idPrefix={`rc-${p.pickupId}`} url="/api/reports" submit="Send to coordinators" extra={{ claimId: p.claimId }} success="Sent. Your coordinators will look at it."
           fields={[
             { name: "category", label: "What happened?", type: "select", options: [["safety", "I felt unsafe"], ["conduct", "Inappropriate behaviour"], ["no_show", "Someone did not show up"], ["other", "Something else"]] },
             { name: "details", label: "Details", type: "textarea", maxLength: 2000 },
@@ -108,7 +110,7 @@ export function SlotCard({ s }: { s: Slot }) {
   return (
     <article className="vcard" aria-label={`Open slot ${windowText(s.window, s.timezone)}`}>
       <p className="when">{windowText(s.window, s.timezone)}</p>
-      <p className="muted" style={{ margin: "0 0 0.3rem" }}>{s.chapterName} · {s.units} item{s.units === 1 ? "" : "s"} · needs {s.volunteersNeeded} more volunteer{s.volunteersNeeded === 1 ? "" : "s"}</p>
+      <p className="muted" style={{ margin: "0 0 0.3rem" }}>{s.chapterName} · {s.units} × {s.label} · needs {s.volunteersNeeded} more volunteer{s.volunteersNeeded === 1 ? "" : "s"}</p>
       <p className="small muted" style={{ margin: 0 }}>The address is shown only after the pickup is scheduled, from 24 hours before.</p>
       <div className="actions"><ActionButton label="Sign up for this pickup" className="btn big" action={() => api("POST", `/api/pickups/${s.pickupId}/signup`)} /></div>
     </article>
@@ -124,5 +126,64 @@ export function SafetyGate() {
         <ActionButton label="I have read them and will follow them" className="btn" action={() => api("POST", "/api/safety/ack")} />
       </p>
     </div>
+  );
+}
+
+/** My weekly shifts, and the open ones I can sign up for. */
+export function ShiftsSection({ mine, open }: { mine: MyShift[]; open: (Occurrence & { chapterSlug: string })[] }) {
+  return (
+    <>
+      <h2>My shifts</h2>
+      {mine.length === 0 ? <p className="empty">You are not signed up for any shifts yet.</p> : (
+        <ul className="plain">
+          {mine.map((m) => (
+            <li key={m.slotId + m.date} className="shift">
+              <span><b>{m.label}</b> · {formatDay(m.date)}, {m.start} to {m.end} <span className="muted">({m.chapterName})</span></span>
+              <ActionButton label={`Cancel ${m.label} on ${m.date}`} className="link-btn small" confirm="Cancel this shift?" action={() => api("DELETE", `/api/shifts/${m.slotId}/signup?date=${m.date}`)} />
+            </li>
+          ))}
+        </ul>
+      )}
+      <details>
+        <summary>Sign up for a shift ({open.length} open)</summary>
+        {open.length === 0 ? <p className="empty">Every shift has the volunteers it needs.</p> : (
+          <ul className="plain">
+            {open.slice(0, 20).map((o) => (
+              <li key={o.slotId + o.date} className="shift">
+                <span><b>{o.label}</b> · {formatDay(o.date)}, {o.start} to {o.end} <span className="muted">needs {o.gap} more{o.periodLabel ? ` (${o.periodLabel})` : ""}</span></span>
+                <ActionButton label={`Sign up for ${o.label} on ${o.date}`} className="btn small" action={() => api("POST", `/api/shifts/${o.slotId}/signup`, { date: o.date })} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
+    </>
+  );
+}
+
+/** My delivery batch: what to take where, and when the site can receive it. Items go to agency staff only. */
+export function DeliveryCard({ d }: { d: DeliveryView }) {
+  return (
+    <article className="vcard" aria-label={`Delivery to ${d.site.name}`}>
+      <p className="when">Delivery to {d.site.name}</p>
+      <p style={{ margin: "0 0 0.3rem" }}>
+        <span className={`status ${d.status === "completed" ? "received" : "scheduled"}`}>{d.status === "planned" ? "Planned" : d.status === "out" ? "Out for delivery" : "Delivered"}</span>{" "}
+        <span className="muted">{d.site.partnerName} · planned for {formatDay(d.plannedFor)}</span>
+      </p>
+      <div className="private">
+        <dl>
+          <dt>Where</dt><dd>{d.site.address}</dd>
+          <dt>Receiving hours</dt><dd>{d.site.receivingHours || "Ask your coordinator"}</dd>
+        </dl>
+      </div>
+      <p className="small" style={{ margin: "0.4rem 0 0" }}><b>Take:</b></p>
+      <ul style={{ margin: "0.2rem 0" }}>{d.requests.map((r) => <li key={r.id}>{r.label}</li>)}</ul>
+      {d.volunteers.length > 1 && <p className="small muted" style={{ margin: 0 }}>With {d.volunteers.map((v) => v.name).join(", ")}.</p>}
+      <p className="small" style={{ margin: "0.4rem 0 0" }}>Hand items to the agency’s staff at the door. Never to the people they serve, and never ask who receives them.</p>
+      <div className="actions">
+        {d.status === "planned" && <ActionButton label="Start delivery" className="btn big" action={() => api("POST", `/api/deliveries/${d.id}/start`)} />}
+        {d.status === "out" && <ActionButton label="Delivered to the agency" className="btn big" action={() => api("POST", `/api/deliveries/${d.id}/complete`)} />}
+      </div>
+    </article>
   );
 }

@@ -9,8 +9,8 @@ import { config } from "@/lib/config";
 import { SignOutButton } from "@/components/AuthForms";
 
 export const metadata: Metadata = {
-  title: { default: "OpenFrame: care packages, by students and neighbours", template: "%s · OpenFrame" },
-  description: "An open-source, student-run network that collects what is needed for care packages for people experiencing homelessness, in London and Oshawa, Ontario.",
+  title: { default: "OpenFrame: students and neighbours, linked to the agencies that serve people experiencing homelessness", template: "%s · OpenFrame" },
+  description: "An open-source, student-run link between community partners and neighbours. Agencies post exactly what they need; neighbours claim a request; student teams in London and Oshawa, Ontario deliver it, in under 72 hours.",
 };
 export const dynamic = "force-dynamic";
 
@@ -25,7 +25,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <a className="skip-link" href="#main">Skip to main content</a>
         {config.demo && (
           <div className="demo-banner" role="note">
-            Demo mode: all chapters, needs and people are demonstration data.
+            Demo mode: all chapters, requests and people are demonstration data.
           </div>
         )}
         <div className="site-notice" role="note" aria-label="About this site">
@@ -35,10 +35,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <div className="wrap">
             <Link href="/" className="brand">OpenFrame</Link>
             <nav className="main" aria-label="Main">
-              <Link href="/">Needs</Link>
+              <Link href="/">Requests</Link>
               <Link href="/impact">Impact</Link>
-              {actor && <Link href="/pledges">My pledges</Link>}
-              {volunteers && <Link href="/volunteer">My pickups</Link>}
+              {actor && <Link href="/claims">My claims</Link>}
+              <Link href="/partner">For partners</Link>
+              {volunteers && <Link href="/volunteer">My shifts</Link>}
               {coordinates && <Link href="/coordinate">Coordinate</Link>}
               {actor && isAdmin(actor) && <Link href="/admin">Admin</Link>}
             </nav>

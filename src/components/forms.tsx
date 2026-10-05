@@ -68,7 +68,7 @@ export function ActionButton({
 export type Field = {
   name: string; label: string; type?: "text" | "number" | "textarea" | "select" | "checkbox" | "date" | "email";
   options?: [string, string][]; help?: string; required?: boolean; defaultValue?: string | number | boolean;
-  min?: number; max?: number; maxLength?: number; placeholder?: string;
+  min?: number; max?: number; maxLength?: number; placeholder?: string; numeric?: boolean;
 };
 
 /** A small JSON form: builds the request body from its fields (plus `extra`), sends it, shows errors, refreshes. */
@@ -93,7 +93,7 @@ export function JsonForm({
           const raw = f.get(fld.name);
           if (fld.type === "checkbox") body[fld.name] = raw === "on";
           else if (fld.type === "number") body[fld.name] = raw === null || raw === "" ? undefined : Number(raw);
-          else if (typeof raw === "string") body[fld.name] = raw;
+          else if (typeof raw === "string") body[fld.name] = fld.numeric ? Number(raw) : raw;
         }
         const r = await run(() => api(method, url, body));
         if (r !== undefined) {

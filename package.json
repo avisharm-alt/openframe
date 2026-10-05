@@ -2,7 +2,7 @@
   "name": "openframe",
   "version": "0.1.0",
   "private": true,
-  "description": "OpenFrame: an open-source, student-run community care-package network.",
+  "description": "OpenFrame: an open-source, student-run link between community partners and neighbours, serving people experiencing homelessness.",
   "license": "MIT",
   "engines": {
     "node": ">=20.9"
@@ -19,7 +19,7 @@
     "db:backup": "tsx --env-file-if-exists=.env.local scripts/backup.ts",
     "admin:add-chapter": "tsx --env-file-if-exists=.env.local scripts/add-chapter.ts",
     "admin:purge-pickups": "tsx --env-file-if-exists=.env.local scripts/purge-pickups.ts",
-    "admin:notify-overdue": "tsx --env-file-if-exists=.env.local scripts/notify-overdue.ts",
+    "admin:sweep": "tsx --env-file-if-exists=.env.local scripts/sweep.ts",
     "admin:grant": "tsx --env-file-if-exists=.env.local scripts/grant-role.ts",
     "admin:delete-user": "tsx --env-file-if-exists=.env.local scripts/delete-user.ts",
     "e2e": "bash scripts/run-e2e.sh",

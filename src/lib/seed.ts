@@ -1,5 +1,6 @@
 // Demo data. Used only by `npm run db:seed-demo` (which refuses to run in production). Everything goes through the
-// real services, then a few pickup windows are moved in time with SQL so each pickup state can be shown today.
+// real services; then a few timestamps and pickup windows are moved with SQL so every state can be shown today,
+// including requests delivered days ago (so the impact page has a time-to-delivery to show).
 import { getDb } from "./db";
 import { addDays, localDate, zonedToUtc } from "./time";
 import type { Actor } from "./types";
@@ -7,13 +8,15 @@ import { getChapterBySlug } from "./services/access";
 import { setMember } from "./services/chapters";
 import { acknowledgeSafety } from "./services/safety";
 import { listItems } from "./services/items";
-import { createNeed } from "./services/needs";
-import { updateTemplate, listTemplates } from "./services/templates";
 import { createZone } from "./services/zones";
-import { createPartner } from "./services/partners";
-import { adjustStock } from "./services/inventory";
-import { assemblePackages, handOffPackages } from "./services/packages";
-import { cancelPledge, createPledge, getMyPledge, receivePledge } from "./services/pledges";
+import { applyPartner, createPartner, createSite, decideWorker, requestAccess } from "./services/partners";
+import { createRequest, fillFromStock, saveFavourite } from "./services/requests";
+import { cancelClaim, createClaim, getMyClaim, receiveClaim } from "./services/claims";
+import { assembleKits, createKitTemplate, listKitTemplates, updateKitTemplate } from "./services/kits";
+import { adjustStock } from "./services/stock";
+import { setTarget } from "./services/restock";
+import { assignDeliveryVolunteer, completeDelivery, confirmReceipt, createDelivery, startDelivery } from "./services/deliveries";
+import { createPeriod, createSlot, signUpShift, weekdayOf } from "./services/shifts";
 import { arrive, assignVolunteer, completePickup, confirmWindow } from "./services/pickups";
 import { fileConcern } from "./services/concerns";
 
@@ -22,12 +25,18 @@ export type DemoUsers = {
   londonVolunteers: Actor[]; // [0..2] acknowledged the Safety rules
   newVolunteer: Actor; // a volunteer who has not yet acknowledged them
   oshawaVolunteers: Actor[];
-  donors: Actor[]; // six donors for London, [0] also pledges in Oshawa
+  neighbours: Actor[]; // six neighbours; [0..2] also claim in Oshawa
+  londonWorker: Actor; // approved agency worker, Ark Aid Street Mission (demo)
+  londonWorker2: Actor; // approved agency worker, Downtown Outreach (demo)
+  pendingWorker: Actor; // asked to join Ark Aid, waiting for a coordinator
+  applicant: Actor; // applied for a new partner, waiting for a coordinator
+  oshawaWorker: Actor;
 };
 export const DEMO_EMAIL = (a: Actor) => `${a.name!.toLowerCase().replace(/\s+/g, "-")}@example.test`;
 
 const email = (a: Actor) => (getDb().prepare('SELECT email FROM "user" WHERE id = ?').get(a.id) as { email: string }).email;
 
+/** Moves a pickup's first window to `dayOffset` days from today so each pickup state can be shown now. */
 function moveWindow(pickupId: string, tz: string, dayOffset: number, start: string, end: string) {
   const db = getDb();
   const first = db.prepare("SELECT id FROM pickup_window WHERE pickup_id = ? ORDER BY start_at LIMIT 1").get(pickupId) as { id: string };
@@ -40,139 +49,198 @@ function moveWindow(pickupId: string, tz: string, dayOffset: number, start: stri
   return zonedToUtc(date, start, tz);
 }
 
+/** Backdates a request (and its delivery) so it reads as delivered `deliveredHoursAgo` after being asked `askedHoursAgo` ago. */
+function backdate(requestId: string, askedHoursAgo: number, deliveredHoursAgo: number, confirmed: boolean) {
+  const db = getDb();
+  const iso = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
+  db.prepare("UPDATE request SET created_at = ?, delivered_at = ?, confirmed_at = ? WHERE id = ?").run(iso(askedHoursAgo), iso(deliveredHoursAgo), confirmed ? iso(deliveredHoursAgo - 2) : null, requestId);
+  db.prepare("UPDATE delivery SET started_at = ?, completed_at = ? WHERE id IN (SELECT delivery_id FROM delivery_request WHERE request_id = ?)").run(iso(deliveredHoursAgo + 1.5), iso(deliveredHoursAgo), requestId);
+}
+
+const nextWeekday = (tz: string, weekday: number, weeksAhead = 0) => {
+  let d = addDays(localDate(tz), 1);
+  while (weekdayOf(d) !== weekday) d = addDays(d, 1);
+  return addDays(d, 7 * weeksAhead);
+};
+
 export function seedDemoData(u: DemoUsers) {
   const london = getChapterBySlug("london");
   const oshawa = getChapterBySlug("oshawa");
   const items = listItems();
   const item = (slug: string) => items.find((i) => i.slug === slug)!.id;
+  const tz = london.timezone;
+  const lc = u.londonCoordinator, oc = u.oshawaCoordinator;
 
   // People and roles.
-  setMember(u.admin, london.id, { email: email(u.londonCoordinator), role: "coordinator" });
-  setMember(u.admin, oshawa.id, { email: email(u.oshawaCoordinator), role: "coordinator" });
-  for (const v of [...u.londonVolunteers, u.newVolunteer]) setMember(u.londonCoordinator, london.id, { email: email(v), role: "volunteer" });
-  for (const v of u.oshawaVolunteers) setMember(u.oshawaCoordinator, oshawa.id, { email: email(v), role: "volunteer" });
+  setMember(u.admin, london.id, { email: email(lc), role: "coordinator" });
+  setMember(u.admin, oshawa.id, { email: email(oc), role: "coordinator" });
+  for (const v of [...u.londonVolunteers, u.newVolunteer]) setMember(lc, london.id, { email: email(v), role: "volunteer" });
+  for (const v of u.oshawaVolunteers) setMember(oc, oshawa.id, { email: email(v), role: "volunteer" });
   for (const v of [...u.londonVolunteers, ...u.oshawaVolunteers]) acknowledgeSafety(v);
 
-  // Zones, partners, templates, needs for both chapters.
-  const lc = u.londonCoordinator, oc = u.oshawaCoordinator;
-  createZone(lc, london.id, { name: "Student centre front desk (demo)", description: "Main floor front desk, University Community Centre", hours: "Mon–Fri 10:00–16:00" });
-  createZone(lc, london.id, { name: "Library main lobby (demo)", description: "Main floor lobby, next to the information desk", hours: "Mon–Thu 9:00–20:00" });
-  createZone(oc, oshawa.id, { name: "Student life office (demo)", description: "Student life office, main campus building", hours: "Mon–Fri 10:00–15:00" });
+  // Zones, partners with delivery sites, workers.
+  const zones = [
+    createZone(lc, london.id, { name: "Student centre front desk (demo)", description: "Main floor front desk, University Community Centre", hours: "Mon–Fri 10:00–16:00" }),
+    createZone(lc, london.id, { name: "Library main lobby (demo)", description: "Main floor lobby, next to the information desk", hours: "Mon–Thu 9:00–20:00" }),
+  ];
+  const oZone = createZone(oc, oshawa.id, { name: "Student life office (demo)", description: "Student life office, main campus building", hours: "Mon–Fri 10:00–15:00" });
   createZone(oc, oshawa.id, { name: "Library lobby (demo)", description: "Front lobby of the campus library", hours: "Mon–Fri 9:00–18:00" });
-  const shelter = createPartner(lc, london.id, { name: "Downtown Shelter (demo)", description: "Emergency shelter and drop-in" });
-  createPartner(lc, london.id, { name: "Community Meal Program (demo)", description: "Weekday meals", acceptsPackages: false });
-  const oShelter = createPartner(oc, oshawa.id, { name: "Harbour Outreach (demo)", description: "Street outreach team" });
-  for (const [ch, coord, target] of [[london, lc, 10], [oshawa, oc, 5]] as const) {
-    const t = listTemplates(ch.id).find((x) => x.name === "Winter kit")!;
-    updateTemplate(coord, t.id, { active: true, weeklyTarget: target });
+  const ark = createPartner(lc, london.id, { name: "Ark Aid Street Mission (demo)", description: "Street mission and drop-in", excludedItems: "Used underwear, glass items" });
+  const arkSite = createSite(lc, ark.id, { name: "Ark Aid main building (demo)", address: "696 Dundas St", receivingHours: "Mon–Fri 9:00–16:00" });
+  const down = createPartner(lc, london.id, { name: "Downtown Outreach (demo)", description: "Street outreach team" });
+  const downSite = createSite(lc, down.id, { name: "Outreach hub (demo)", address: "1 King St", receivingHours: "Daily 10:00–14:00" });
+  const harbour = createPartner(oc, oshawa.id, { name: "Harbour Outreach (demo)", description: "Street outreach team", excludedItems: "Anything second-hand except coats" });
+  const harbourSite = createSite(oc, harbour.id, { name: "Harbour drop-in (demo)", address: "5 Simcoe St", receivingHours: "Daily 9:00–17:00" });
+  const oShelter = createPartner(oc, oshawa.id, { name: "Lakeside Shelter (demo)", description: "Emergency shelter" });
+  createSite(oc, oShelter.id, { name: "Lakeside main entrance (demo)", address: "20 Lake Rd", receivingHours: "Mon–Fri 10:00–16:00" });
+  for (const [w, p, c] of [[u.londonWorker, ark, lc], [u.londonWorker2, down, lc], [u.oshawaWorker, harbour, oc]] as const) {
+    requestAccess(w, p.id);
+    decideWorker(c, p.id, w.id, { decision: "approved" });
   }
-  const pads = createNeed(lc, london.id, { itemId: item("pads"), quantity: 30, priority: "high", note: "Running low" });
-  createNeed(lc, london.id, { itemId: item("tampons"), quantity: 24, priority: "normal" });
-  createNeed(lc, london.id, { itemId: item("winter-coat"), quantity: 10, priority: "high", note: "Adult sizes M to XL, clean and in good condition" });
-  createNeed(oc, oshawa.id, { itemId: item("scarf"), quantity: 25, priority: "urgent", note: "Cold snap this week" });
-  createNeed(oc, oshawa.id, { itemId: item("bandages"), quantity: 15 });
+  requestAccess(u.pendingWorker, ark.id); // waiting for a coordinator
+  applyPartner(u.applicant, { chapter: "london", name: "Eastside Food Bank (demo)", description: "Applied to become a partner" }); // waiting for verification
 
-  // Stock, packages and hand-offs (so the impact page has something to show).
-  const stock: [string, number][] = [["socks", 14], ["toque", 8], ["gloves", 9], ["toothbrush", 12], ["toothpaste", 10], ["soap-bar", 11], ["hand-warmers", 20], ["granola-bar", 24], ["lip-balm", 6]];
-  for (const [slug, n] of stock) adjustStock(lc, london.id, { kind: "adjusted", itemId: item(slug), delta: n, note: "Opening count (demo)" });
-  const kit = listTemplates(london.id).find((x) => x.name === "Winter kit")!;
-  const made = assemblePackages(lc, london.id, { templateId: kit.id, count: 4 }).packageIds;
-  const tz = london.timezone;
-  handOffPackages(lc, london.id, { packageIds: made.slice(0, 2), agencyId: shelter.id, date: addDays(localDate(tz), -9) });
-  handOffPackages(lc, london.id, { packageIds: made.slice(2, 3), agencyId: shelter.id, date: addDays(localDate(tz), -2) });
-  for (const [slug, n] of [["socks", 6], ["toque", 3], ["gloves", 3], ["toothbrush", 3], ["toothpaste", 3], ["soap-bar", 3], ["hand-warmers", 6], ["granola-bar", 6], ["lip-balm", 3]] as [string, number][]) {
-    adjustStock(oc, oshawa.id, { kind: "adjusted", itemId: item(slug), delta: n, note: "Opening count (demo)" });
+  // Kit templates, stock and restock targets.
+  for (const [ch, coord] of [[london, lc], [oshawa, oc]] as const) {
+    const t = listKitTemplates(ch.id).find((x) => x.name === "Winter outreach kit")!;
+    updateKitTemplate(coord, t.id, { active: true });
   }
-  const oKit = listTemplates(oshawa.id).find((x) => x.name === "Winter kit")!;
-  handOffPackages(oc, oshawa.id, { packageIds: assemblePackages(oc, oshawa.id, { templateId: oKit.id, count: 2 }).packageIds, agencyId: oShelter.id, date: addDays(localDate(oshawa.timezone), -1) });
+  const kit = listKitTemplates(london.id).find((x) => x.name === "Winter outreach kit")!;
+  const stock: [string, number][] = [["socks", 40], ["toque", 20], ["gloves", 20], ["toothbrush", 20], ["toothpaste", 20], ["soap-bar", 20], ["hand-warmers", 40], ["granola-bar", 40], ["lip-balm", 20], ["drawstring-bag", 10]];
+  for (const [slug, n] of stock) adjustStock(lc, london.id, { kind: "adjusted", itemId: item(slug), size: "", delta: n, note: "Opening count (demo)" });
+  for (const [slug, n] of [["scarf", 10], ["gloves", 12], ["toque", 10], ["bandages", 8]] as [string, number][]) {
+    adjustStock(oc, oshawa.id, { kind: "adjusted", itemId: item(slug), size: "", delta: n, note: "Opening count (demo)" });
+  }
+  createKitTemplate(lc, london.id, { name: "Hygiene kit (demo)", description: "Toothbrush, toothpaste, soap, lip balm", active: true, items: ["toothbrush", "toothpaste", "soap-bar", "lip-balm"].map((s) => ({ itemId: item(s), size: "", quantity: 1 })) });
+  setTarget(lc, london.id, { itemId: item("socks"), size: "", target: 60 }); // below target: a restock request appears on the board
+  setTarget(lc, london.id, { itemId: item("toothbrush"), size: "", target: 10 });
+  setTarget(oc, oshawa.id, { itemId: item("scarf"), size: "", target: 20 });
 
-  // Pickups in every state.
+  // Shifts and exam-period planning.
+  const slots = [
+    createSlot(lc, london.id, { label: "Tuesday evening run", weekday: 1, start: "17:00", end: "19:00", needed: 2 }),
+    createSlot(lc, london.id, { label: "Saturday morning run", weekday: 5, start: "10:00", end: "12:00", needed: 3 }),
+  ];
+  const oSlot = createSlot(oc, oshawa.id, { label: "Wednesday evening run", weekday: 2, start: "17:00", end: "19:00", needed: 2 });
   const [v1, v2, v3] = u.londonVolunteers;
-  const [d1, d2, d3, d4, d5, d6] = u.donors;
+  signUpShift(v1, slots[0].id, { date: nextWeekday(tz, 1) });
+  signUpShift(v2, slots[0].id, { date: nextWeekday(tz, 1) });
+  signUpShift(v1, slots[1].id, { date: nextWeekday(tz, 5) });
+  signUpShift(v3, slots[1].id, { date: nextWeekday(tz, 5, 1) });
+  signUpShift(u.oshawaVolunteers[0], oSlot.id, { date: nextWeekday(oshawa.timezone, 2) });
+  createPeriod(lc, london.id, { label: "Winter exams (demo)", startDate: addDays(localDate(tz), 14), endDate: addDays(localDate(tz), 28), extraNeeded: 1 });
+
   const ahead = (n: number) => addDays(localDate(tz), n);
-  const lines = (n: number) => [{ needId: pads.needId, quantity: n }];
-  const pickup = (donor: Actor, n: number, days: number) =>
-    createPledge(donor, {
-      chapter: "london", method: "pickup", items: lines(n), address: `${100 + n} Demo Street, Unit ${n}`, notes: "Demo notes: ring the bell", phone: "",
-      windows: [{ date: ahead(days), start: "10:00", end: "12:00" }, { date: ahead(days + 1), start: "13:00", end: "16:00" }],
-    }).id;
-  const pk = (donor: Actor, id: string) => getMyPledge(donor, id).pickup!.id;
-  const confirm = (donor: Actor, pledgeId: string) => {
-    const p = getMyPledge(donor, pledgeId).pickup!;
-    confirmWindow(lc, p.id, { windowId: p.windows[0].id });
-  };
+  const post = (who: Actor, partnerId: string, siteId: string, slug: string, size: string, quantity: number, days: number, extra: Record<string, unknown> = {}) =>
+    createRequest(who, { type: "item", partnerId, siteId, itemId: item(slug), size, quantity, neededBy: ahead(days), ...extra }).id;
+  const w1 = u.londonWorker, w2 = u.londonWorker2;
+  saveFavourite(w1, ark.id, { itemId: item("mens-winter-boots"), size: "11", quantity: 6, siteId: arkSite.id, urgency: "normal" });
 
-  // pledged, nobody assigned yet
-  pickup(d1, 1, 4);
-  // pledged, one volunteer so far
-  const b = pickup(d2, 1, 5);
-  assignVolunteer(lc, pk(d2, b), { volunteerId: v1.id });
-  // scheduled (future)
-  const c = pickup(d3, 2, 3);
-  assignVolunteer(lc, pk(d3, c), { volunteerId: v1.id });
-  assignVolunteer(lc, pk(d3, c), { volunteerId: v2.id });
-  confirm(d3, c);
-  // today (window moved to 9:00-20:00 today so the address is visible and check-in is open)
-  const dToday = pickup(d4, 2, 3);
-  assignVolunteer(lc, pk(d4, dToday), { volunteerId: v1.id });
-  assignVolunteer(lc, pk(d4, dToday), { volunteerId: v2.id });
-  confirm(d4, dToday);
-  moveWindow(pk(d4, dToday), tz, 0, "09:00", "20:00");
-  // overdue (window ended yesterday, still open)
-  const e = pickup(d5, 1, 3);
-  assignVolunteer(lc, pk(d5, e), { volunteerId: v2.id });
-  assignVolunteer(lc, pk(d5, e), { volunteerId: v3.id });
-  confirm(d5, e);
-  moveWindow(pk(d5, e), tz, -1, "10:00", "12:00");
-  // collected, waiting to be counted
-  const f = pickup(d6, 2, 3);
-  assignVolunteer(lc, pk(d6, f), { volunteerId: v2.id });
-  assignVolunteer(lc, pk(d6, f), { volunteerId: v3.id });
-  confirm(d6, f);
-  const fStart = moveWindow(pk(d6, f), tz, -2, "10:00", "12:00");
-  for (const v of [v2, v3]) arrive(v, pk(d6, f), fStart);
-  for (const v of [v2, v3]) completePickup(v, pk(d6, f), { outcome: "collected" }, fStart);
-  // received (counted into stock)
-  const g = pickup(d1, 3, 3);
-  assignVolunteer(lc, pk(d1, g), { volunteerId: v1.id });
-  assignVolunteer(lc, pk(d1, g), { volunteerId: v3.id });
-  confirm(d1, g);
-  const gStart = moveWindow(pk(d1, g), tz, -4, "13:00", "15:00");
-  for (const v of [v1, v3]) arrive(v, pk(d1, g), gStart);
-  for (const v of [v1, v3]) completePickup(v, pk(d1, g), { outcome: "collected" }, gStart);
-  receivePledge(lc, g, { lines: getMyPledge(d1, g).items.map((l) => ({ lineId: l.lineId, quantity: l.quantity })), note: "Demo" });
-  // cancelled by the donor
-  cancelPledge(d2, pickup(d2, 1, 6));
-  // no-show: volunteers found nobody home
-  const h = pickup(d3, 1, 3);
-  assignVolunteer(lc, pk(d3, h), { volunteerId: v1.id });
-  assignVolunteer(lc, pk(d3, h), { volunteerId: v3.id });
-  confirm(d3, h);
-  const hStart = moveWindow(pk(d3, h), tz, -3, "10:00", "12:00");
-  for (const v of [v1, v3]) arrive(v, pk(d3, h), hStart);
-  completePickup(v1, pk(d3, h), { outcome: "could_not_complete", reason: "nobody_home" }, hStart);
-  fileConcern(d3, { pledgeId: h, category: "no_show", details: "Demo: I was out when the volunteers arrived; can we reschedule?" });
+  // Delivered history (backdated), so Impact has a median time to delivery.
+  const h1 = post(w1, ark.id, arkSite.id, "toothbrush", "", 6, 5);
+  fillFromStock(lc, h1);
+  const d1 = createDelivery(lc, london.id, { siteId: arkSite.id, requestIds: [h1], plannedFor: ahead(0) }).id;
+  assignDeliveryVolunteer(lc, d1, { volunteerId: v1.id }); assignDeliveryVolunteer(lc, d1, { volunteerId: v2.id });
+  startDelivery(v1, d1); completeDelivery(v1, d1); confirmReceipt(w1, h1);
+  backdate(h1, 60, 14, true);
+  const h2 = post(w1, ark.id, arkSite.id, "hand-warmers", "", 8, 5);
+  fillFromStock(lc, h2);
+  const d2 = createDelivery(lc, london.id, { siteId: arkSite.id, requestIds: [h2], plannedFor: ahead(0) }).id;
+  assignDeliveryVolunteer(lc, d2, { volunteerId: v3.id }); assignDeliveryVolunteer(lc, d2, { volunteerId: v1.id });
+  startDelivery(v3, d2); completeDelivery(v3, d2); confirmReceipt(w1, h2);
+  backdate(h2, 120, 100, true);
+  // Claimed by a neighbour, dropped off, delivered, waiting for the agency to confirm.
+  const [n1, n2, n3, n4, n5, n6] = u.neighbours;
+  const h3 = post(w1, ark.id, arkSite.id, "socks", "", 6, 6);
+  const h3c = createClaim(n2, { requestId: h3, quantity: 6, method: "dropoff", zoneId: zones[0].id, expectedDate: ahead(0) }).id;
+  receiveClaim(lc, h3c, { quantity: 6 });
+  const d3 = createDelivery(lc, london.id, { siteId: arkSite.id, requestIds: [h3], plannedFor: ahead(0) }).id;
+  assignDeliveryVolunteer(lc, d3, { volunteerId: v2.id }); assignDeliveryVolunteer(lc, d3, { volunteerId: v3.id });
+  startDelivery(v2, d3); completeDelivery(v2, d3);
+  backdate(h3, 80, 30, false);
 
-  // Drop-offs: one waiting at a zone, one already counted.
-  const zones = getDb().prepare("SELECT id FROM zone WHERE chapter_id = ? ORDER BY name").all(london.id) as { id: string }[];
-  createPledge(d4, { chapter: "london", method: "dropoff", items: [{ needId: pads.needId, quantity: 4 }], zoneId: zones[0].id, expectedDate: ahead(1) });
-  const done = createPledge(d5, { chapter: "london", method: "dropoff", items: [{ needId: pads.needId, quantity: 5 }], zoneId: zones[1].id, expectedDate: ahead(0) }).id;
-  receivePledge(lc, done, { lines: getMyPledge(d5, done).items.map((l) => ({ lineId: l.lineId, quantity: l.quantity })) });
+  // Open requests on the board and claims in every state (London).
+  post(w1, ark.id, arkSite.id, "mens-winter-boots", "11", 6, 2, { urgency: "urgent", note: "Needed for outreach this week" }); // open, urgent
+  post(w1, ark.id, arkSite.id, "toothbrush", "", 5, 1, { urgency: "urgent" }); // open; the shelf can fill it
+  const sweat = post(w2, down.id, downSite.id, "sweatshirt", "L", 4, 5);
+  createClaim(n2, { requestId: sweat, quantity: 1, method: "dropoff", zoneId: zones[1].id, expectedDate: ahead(2) }); // partial claim: 3 still needed
+  const windows = (days: number) => [{ date: ahead(days), start: "10:00", end: "12:00" }, { date: ahead(days + 1), start: "13:00", end: "16:00" }];
+  const pickup = (who: Actor, requestId: string, qty: number, days: number) =>
+    createClaim(who, { requestId, quantity: qty, method: "pickup", address: `${100 + qty} Demo Street, Unit ${qty}`, notes: "Demo notes: ring the bell", phone: "", windows: windows(days) }).id;
+  const pk = (who: Actor, claimId: string) => getMyClaim(who, claimId).pickup!;
+  const confirm = (who: Actor, claimId: string) => { const p = pk(who, claimId); confirmWindow(lc, p.id, { windowId: p.windows[0].id }); };
+  const twoVols = (who: Actor, claimId: string, a: Actor, b: Actor) => { assignVolunteer(lc, pk(who, claimId).id, { volunteerId: a.id }); assignVolunteer(lc, pk(who, claimId).id, { volunteerId: b.id }); confirm(who, claimId); };
 
-  // Oshawa: a scheduled pickup, an unassigned one and a drop-off.
+  pickup(n1, post(w1, ark.id, arkSite.id, "toque", "", 10, 4), 3, 3); // claimed, nobody assigned yet
+  const r4 = post(w2, down.id, downSite.id, "gloves", "", 6, 4);
+  const c4 = pickup(n2, r4, 2, 3);
+  assignVolunteer(lc, pk(n2, c4).id, { volunteerId: v1.id }); // one volunteer so far
+  const c5 = pickup(n3, post(w1, ark.id, arkSite.id, "sweatpants", "M", 6, 6), 6, 3);
+  twoVols(n3, c5, v1, v2); // scheduled, in the future
+  const c6 = pickup(n4, post(w2, down.id, downSite.id, "backpack", "", 3, 5), 3, 3);
+  twoVols(n4, c6, v1, v2);
+  moveWindow(pk(n4, c6).id, tz, 0, "09:00", "20:00"); // today: address visible, check-in open
+  const c7 = pickup(n5, post(w1, ark.id, arkSite.id, "drawstring-bag", "", 4, 4), 4, 3);
+  twoVols(n5, c7, v2, v3);
+  moveWindow(pk(n5, c7).id, tz, -1, "10:00", "12:00"); // overdue: window ended yesterday, still open
+  const c8 = pickup(n6, post(w2, down.id, downSite.id, "power-bank", "", 2, 4), 2, 3);
+  twoVols(n6, c8, v2, v3);
+  const s8 = moveWindow(pk(n6, c8).id, tz, -2, "10:00", "12:00");
+  for (const v of [v2, v3]) arrive(v, pk(n6, c8).id, s8);
+  for (const v of [v2, v3]) completePickup(v, pk(n6, c8).id, { outcome: "collected" }, s8); // collected, waiting to be counted
+  const r9 = post(w1, ark.id, arkSite.id, "sleeping-bag", "", 2, 5);
+  const c9 = pickup(n1, r9, 2, 3);
+  twoVols(n1, c9, v1, v3);
+  const s9 = moveWindow(pk(n1, c9).id, tz, -3, "13:00", "15:00");
+  for (const v of [v1, v3]) arrive(v, pk(n1, c9).id, s9);
+  for (const v of [v1, v3]) completePickup(v, pk(n1, c9).id, { outcome: "collected" }, s9);
+  receiveClaim(lc, c9, { quantity: 2 }); // received: the request is now in hand, ready for a delivery run
+  cancelClaim(n2, pickup(n2, post(w1, ark.id, arkSite.id, "running-shoes", "10", 1, 5), 1, 4)); // cancelled by the neighbour: back on the board
+  const r11 = post(w1, ark.id, arkSite.id, "pants-numeric", "12", 2, 6);
+  const c11 = pickup(n3, r11, 2, 3);
+  twoVols(n3, c11, v1, v3);
+  const s11 = moveWindow(pk(n3, c11).id, tz, -3, "10:00", "12:00");
+  for (const v of [v1, v3]) arrive(v, pk(n3, c11).id, s11);
+  completePickup(v1, pk(n3, c11).id, { outcome: "could_not_complete", reason: "nobody_home" }, s11); // no-show
+  fileConcern(n3, { claimId: c11, category: "no_show", details: "Demo: I was out when the volunteers arrived; can we reschedule?" });
+  // Kits: two assembled and filled from stock, planned on a delivery to Downtown Outreach.
+  const kitReq = createRequest(w2, { type: "kit", partnerId: down.id, siteId: downSite.id, kitTemplateId: kit.id, quantity: 2, neededBy: ahead(3), urgency: "normal" }).id;
+  assembleKits(lc, london.id, { templateId: kit.id, count: 2 });
+  fillFromStock(lc, kitReq);
+  const d4 = createDelivery(lc, london.id, { siteId: downSite.id, requestIds: [kitReq], plannedFor: ahead(1) }).id;
+  assignDeliveryVolunteer(lc, d4, { volunteerId: v1.id });
+  // A request nobody claimed in time.
+  const lapsed = post(w2, down.id, downSite.id, "scarf", "", 2, 1);
+  getDb().prepare("UPDATE request SET status = 'expired', status_reason = 'Not filled by the needed-by date (demo)' WHERE id = ?").run(lapsed);
+
+  // A drop-off waiting at a zone and a count already made.
+  pickupless(n4, post(w2, down.id, downSite.id, "lip-balm", "", 4, 5), zones[0].id, ahead(1), 4);
+
+  // Oshawa: a scheduled pickup, an unassigned one, a drop-off, one delivered request.
   const [o1, o2] = u.oshawaVolunteers;
-  const scarf = getDb().prepare("SELECT id FROM need WHERE chapter_id = ? AND item_id = ? AND source = 'manual'").get(oshawa.id, item("scarf")) as { id: string };
-  const oPickup = (donor: Actor, days: number, n: number) =>
-    createPledge(donor, {
-      chapter: "oshawa", method: "pickup", items: [{ needId: scarf.id, quantity: n }], address: `${200 + n} Sample Avenue`, notes: "", phone: "",
-      windows: [{ date: addDays(localDate(oshawa.timezone), days), start: "11:00", end: "13:00" }],
-    }).id;
-  const os = oPickup(d1, 2, 2);
-  const osPickup = getMyPledge(d1, os).pickup!;
-  assignVolunteer(oc, osPickup.id, { volunteerId: o1.id });
-  assignVolunteer(oc, osPickup.id, { volunteerId: o2.id });
-  confirmWindow(oc, osPickup.id, { windowId: osPickup.windows[0].id });
-  oPickup(d2, 3, 3);
-  const oZone = getDb().prepare("SELECT id FROM zone WHERE chapter_id = ? ORDER BY name LIMIT 1").get(oshawa.id) as { id: string };
-  createPledge(d3, { chapter: "oshawa", method: "dropoff", items: [{ needId: scarf.id, quantity: 4 }], zoneId: oZone.id, expectedDate: addDays(localDate(oshawa.timezone), 1) });
+  const ow = u.oshawaWorker;
+  const oPost = (slug: string, size: string, qty: number, days: number, extra: Record<string, unknown> = {}) =>
+    createRequest(ow, { type: "item", partnerId: harbour.id, siteId: harbourSite.id, itemId: item(slug), size, quantity: qty, neededBy: addDays(localDate(oshawa.timezone), days), ...extra }).id;
+  oPost("scarf", "", 12, 2, { urgency: "urgent", note: "Cold snap this week" });
+  const oReq = oPost("toque", "", 8, 5);
+  const oWindows = (days: number) => [{ date: addDays(localDate(oshawa.timezone), days), start: "11:00", end: "13:00" }];
+  const oc1 = createClaim(n1, { requestId: oReq, quantity: 2, method: "pickup", address: "201 Sample Avenue", notes: "", phone: "", windows: oWindows(2) }).id;
+  const op = getMyClaim(n1, oc1).pickup!;
+  assignVolunteer(oc, op.id, { volunteerId: o1.id });
+  assignVolunteer(oc, op.id, { volunteerId: o2.id });
+  confirmWindow(oc, op.id, { windowId: op.windows[0].id });
+  createClaim(n2, { requestId: oReq, quantity: 3, method: "pickup", address: "203 Sample Avenue", notes: "", phone: "", windows: oWindows(3) });
+  createClaim(n3, { requestId: oPost("bandages", "", 6, 4), quantity: 4, method: "dropoff", zoneId: oZone.id, expectedDate: addDays(localDate(oshawa.timezone), 1) });
+  const oh = oPost("gloves", "", 6, 5);
+  fillFromStock(oc, oh);
+  const od = createDelivery(oc, oshawa.id, { siteId: harbourSite.id, requestIds: [oh], plannedFor: addDays(localDate(oshawa.timezone), 0) }).id;
+  assignDeliveryVolunteer(oc, od, { volunteerId: o1.id }); assignDeliveryVolunteer(oc, od, { volunteerId: o2.id });
+  startDelivery(o1, od); completeDelivery(o1, od); confirmReceipt(ow, oh);
+  backdate(oh, 40, 20, true);
+  signUpShift(o2, oSlot.id, { date: nextWeekday(oshawa.timezone, 2, 1) });
+
+  function pickupless(who: Actor, requestId: string, zoneId: string, date: string, qty: number) {
+    const c = createClaim(who, { requestId, quantity: qty, method: "dropoff", zoneId, expectedDate: date }).id;
+    return c;
+  }
 }

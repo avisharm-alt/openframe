@@ -1,5 +1,5 @@
 // Usage: npm run admin:purge-pickups [-- <days>]   (default: PICKUP_PURGE_DAYS, normally 7)
-// Erases the address, access notes and phone number of pickups whose pledge was collected, cancelled or a no-show
+// Erases the address, access notes and phone number of pickups whose claim was collected, cancelled or a no-show
 // more than N days ago. Run once a day from cron (see docs/OPERATIONS.md). Safe to run any time: it is idempotent.
 import { config } from "../src/lib/config";
 import { purgePickups } from "../src/lib/services/pickups";

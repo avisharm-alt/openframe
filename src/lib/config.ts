@@ -77,7 +77,7 @@ export const config = {
     }
     return "dev-only-pickup-key-do-not-use-in-production-0123456789";
   },
-  /** Pickup address, notes and phone are erased this many days after a pledge is collected, cancelled or a no-show. */
+  /** Pickup address, notes and phone are erased this many days after a claim is collected, cancelled or a no-show. */
   get pickupPurgeDays() {
     return num(process.env.PICKUP_PURGE_DAYS, 7);
   },

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { currentActor } from "@/lib/session";
 import { listMemberships } from "@/lib/services/access";
 import { safetyAcknowledgedAt } from "@/lib/services/safety";
-import { DONOR_SAFETY, INSURANCE_NOTICE, PARTNER_NOTICE, SAFETY_RULES } from "@/lib/copy";
+import { INSURANCE_NOTICE, PARTNER_NOTICE, NEIGHBOUR_SAFETY, SAFETY_RULES } from "@/lib/copy";
 import { config } from "@/lib/config";
 import { SafetyAck } from "@/components/SafetyAck";
 
@@ -15,7 +15,7 @@ export default async function Safety() {
     <div style={{ maxWidth: "44rem" }}>
       <h1>Safety</h1>
       <p>
-        Pickups mean strangers meet at someone’s door, so safety is built in rather than optional: pairs, daytime, doorstep handoff and private addresses. In an emergency, <b>call 911 first</b>.
+        Pickups mean strangers meet at someone’s door, and deliveries mean walking into an agency, so safety is built in rather than optional: pairs, daytime, doorstep handoff, private addresses, and <b>no contact with the people who receive items</b>. In an emergency, <b>call 911 first</b>.
       </p>
 
       <h2>Rules for volunteers</h2>
@@ -25,25 +25,26 @@ export default async function Safety() {
         ))}
       </ol>
       {actor && volunteer ? <SafetyAck at={safetyAcknowledgedAt(actor.id)} /> : (
-        <p className="small muted">Volunteers acknowledge these rules in <Link href="/volunteer">My pickups</Link> before their first assignment.</p>
+        <p className="small muted">Volunteers acknowledge these rules in <Link href="/volunteer">My shifts</Link> before their first assignment.</p>
       )}
 
-      <h2>What donors can expect</h2>
-      <ul>{DONOR_SAFETY.map((x) => <li key={x}>{x}</li>)}</ul>
+      <h2>What neighbours can expect (pickups)</h2>
+      <ul>{NEIGHBOUR_SAFETY.map((x: string) => <li key={x}>{x}</li>)}</ul>
 
       <h2>How the safeguards work</h2>
       <ul>
         <li><b>Two-person rule.</b> A pickup cannot be scheduled until two volunteers are assigned, and neither can check in unless both are.</li>
         <li><b>Daytime windows.</b> Pickup windows are accepted only between 9:00 a.m. and 8:00 p.m. in the chapter’s local time.</li>
         <li><b>Check-in and check-out.</b> Each volunteer taps “Arrived” and then “Done” or “Couldn’t complete” with a reason. If a pickup is not closed within {config.pickupOverdueHours} hours of its window ending, coordinators are alerted.</li>
-        <li><b>Private addresses.</b> Addresses, access notes and phone numbers are encrypted. They are shown only to the donor, the chapter’s coordinators and the assigned volunteers, from {config.pickupVisibleHoursBefore} hours before the window until the pickup is closed. Every view is recorded in an audit log. They are erased {config.pickupPurgeDays} days after the pickup is collected, cancelled or a no-show.</li>
-        <li><b>Reports.</b> A donor can report a concern about a volunteer, and a volunteer about a donor. Reports go to the chapter’s coordinators, who handle safety concerns first.</li>
-        <li><b>Limits.</b> A donor can have at most 3 open pickup pledges, and pledge creation is rate limited.</li>
+        <li><b>Private addresses.</b> Addresses, access notes and phone numbers are encrypted. They are shown only to the neighbour, the chapter’s coordinators and the assigned volunteers, from {config.pickupVisibleHoursBefore} hours before the window until the pickup is closed. Every view is recorded in an audit log. They are erased {config.pickupPurgeDays} days after the pickup is collected, cancelled or a no-show.</li>
+        <li><b>Reports.</b> A neighbour can report a concern about a volunteer, and a volunteer about a neighbour. Reports go to the chapter’s coordinators, who handle safety concerns first.</li>
+        <li><b>Verified partners.</b> Only agency workers approved by a coordinator can post requests, and they are told never to include anything that identifies a person. Requests never record who receives an item.</li>
+        <li><b>Limits.</b> A neighbour can have at most 3 open pickup claims, and claims and requests are rate limited.</li>
       </ul>
 
       <h2>Reporting a concern</h2>
       <p>
-        Donors: open <Link href="/pledges">My pledges</Link> and choose “Report a concern” on the pledge. Volunteers: use “Report a concern about this pickup” in <Link href="/volunteer">My pickups</Link>, or tap “Couldn’t complete” and choose
+        Neighbours: open <Link href="/claims">My claims</Link> and choose “Report a concern” on the claim. Volunteers: use “Report a concern about this pickup” in <Link href="/volunteer">My shifts</Link>, or tap “Couldn’t complete” and choose
         “I had a safety concern”. {config.contact ? <>You can also contact the project at <code>{config.contact}</code>.</> : <>The project has not configured a public contact address yet; until it does, tell your chapter coordinator.</>}
       </p>
 

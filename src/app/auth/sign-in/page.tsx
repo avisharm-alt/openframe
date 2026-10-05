@@ -11,7 +11,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
     <div style={{ maxWidth: "34rem" }}>
       <h1>Sign in</h1>
       <p className="muted">
-        You can browse the live needs without an account. Signing in lets you pledge items, see and change your pledges, and, if a coordinator has made you a volunteer, see your pickups.
+        You can browse the live request board without an account. Signing in lets you claim requests, see and change your claims, and, if a coordinator has made you a volunteer or approved you as an agency worker, see your shifts or post requests.
       </p>
       {sp.error && (
         <p className="notice bad" role="alert">

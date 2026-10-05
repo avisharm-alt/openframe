@@ -52,6 +52,13 @@ export function listBoard(chapterId: string, filters: BoardFilters = {}): BoardC
   return cards.sort((a, b) => Number(b.urgency === "urgent") - Number(a.urgency === "urgent") || a.neededBy.localeCompare(b.neededBy) || a.label.localeCompare(b.label));
 }
 
+/** One open board card by id (for the claim page); null when it is not open or has nothing left to claim. */
+export function getBoardCard(requestId: string): BoardCard | null {
+  const r = getDb().prepare(`${JOIN_SQL} WHERE q.id = ? AND q.status = 'open'`).get(requestId) as JoinRow | undefined;
+  if (!r) return null;
+  return listBoard(r.chapter_id).find((c) => c.requestId === requestId) ?? null;
+}
+
 // ---- agency workers post requests ---------------------------------------------------------------------------------------------------
 
 /**
