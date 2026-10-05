@@ -99,7 +99,7 @@ async function authedPages() {
   const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 900 }, bypassCSP: true });
   const page = await ctx.newPage();
-  for (const p of ["/about", "/guidelines", "/academic-integrity", "/privacy", "/content-removal", "/auth/sign-in", "/saved", "/contribute"]) {
+  for (const p of ["/about", "/guidelines", "/academic-integrity", "/privacy", "/content-removal", "/auth/sign-in", "/saved", "/contribute", "/styleguide"]) {
     await page.goto(BASE + p);
     await axe(page, p);
   }
@@ -127,7 +127,7 @@ async function darkPass() {
   const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 900 }, bypassCSP: true, colorScheme: "dark" });
   const page = await ctx.newPage();
-  for (const p of ["/", "/courses/demo-101?review=all", "/practice/setup?course=demo-101&unreviewed=1", "/about", "/auth/sign-in", "/contribute/new"]) {
+  for (const p of ["/", "/courses/demo-101?review=all", "/practice/setup?course=demo-101&unreviewed=1", "/about", "/auth/sign-in", "/contribute/new", "/styleguide"]) {
     await page.goto(BASE + p);
     await axe(page, `[dark] ${p}`);
   }
