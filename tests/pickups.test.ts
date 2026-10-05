@@ -30,7 +30,7 @@ const VISIBLE = "2026-11-05T15:00:00Z";
 const WINDOW_START = "2026-11-06T15:00:00Z";
 const WINDOW_END = "2026-11-06T17:00:00Z";
 
-/** A pickup pledge with two volunteers and a confirmed window -> scheduled. */
+/** A pickup claim with two volunteers and a confirmed window -> scheduled. */
 function scheduled(donor = w.neighbour) {
   const claimId = claimNew(donor);
   const pk = getMyClaim(donor, claimId).pickup!;
@@ -72,7 +72,7 @@ describe("two-volunteer rule", () => {
     expect(code(() => assignVolunteer(w.lonCoord, pk.id, { volunteerId: w.vol1.id }))).toBe("already_assigned");
   });
 
-  it("removing a volunteer from a scheduled pickup sends it back to pledged, and it cannot run with one person", () => {
+  it("removing a volunteer from a scheduled pickup sends it back to claimed, and it cannot run with one person", () => {
     const { claimId, pickupId } = scheduled();
     unassignVolunteer(w.lonCoord, pickupId, w.vol2.id);
     expect(status(claimId)).toBe("claimed");

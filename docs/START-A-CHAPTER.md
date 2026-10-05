@@ -27,18 +27,21 @@ Only admins can appoint coordinators. Coordinators add volunteers themselves (Co
 In **Coordinate → [chapter]**:
 
 1. **Zones**: public drop-off locations (a campus front desk, a lobby). Never a private address.
-2. **Partners**: agencies that will receive packages. Note the [partner and insurance wording](SAFETY-OPERATIONS.md) before listing one.
-3. **Templates**: the catalog is shared. Create a package template (for example "Winter kit") with its contents and a weekly target, then set it active. Active templates generate the standing needs on the public board: *packages still needed this week × contents − stock*. (Each new chapter does not get the sample "Winter kit" automatically; copy the contents from another chapter's template.)
-4. **Needs**: post one-off needs with a priority and a public note.
-5. **Volunteers**: add volunteers. They must acknowledge the Safety rules before they can be assigned.
+2. **Partners**: sign the partnership note with each agency first ([PARTNER-ONBOARDING.md](PARTNER-ONBOARDING.md)), then add the partner (or approve its application on **Approvals**), add its **delivery sites** (public name, address, receiving hours) and approve its workers.
+3. **Kits** (optional): the item catalog is shared. Review and activate the sample "Winter outreach kit" (each chapter has one, inactive) or create your own template, so workers can request N kits.
+4. **Stock**: count what you have on the shelf and set **restock targets** for the essentials you want ready every day (socks, toques, gloves, toiletries). Below target, a restock request appears on the public board automatically.
+5. **Shifts**: add weekly slots (for example "Tuesday evening run", 2 volunteers) and any exam-period or holiday boosts. Volunteers sign up for dates; coverage gaps show on the Shifts tab.
+6. **Volunteers**: add volunteers. They must acknowledge the Safety rules before they can be assigned.
 
 ## 4. Before the first pickup
 
 - Give every volunteer the chapter's emergency contact number (the Safety page asks them to get it from you).
-- Decide who checks the **Pickups** board daily for the overdue flag, and who reads the **Concerns** queue (safety concerns first).
-- Make sure the operator runs the two cron jobs in [OPERATIONS.md](OPERATIONS.md) (purge, overdue emails).
+- Decide who triages the **Requests** tab every day, who checks the **Pickups** board for the overdue flag, and who reads the **Concerns** queue (safety concerns first).
+- Make sure the operator runs the two cron jobs in [OPERATIONS.md](OPERATIONS.md) (daily purge, 15-minute sweep).
 - Confirm whether your campus group's insurance covers pickups. OpenFrame does not provide insurance.
 
-## 5. Weekly rhythm
+## 5. Daily and weekly rhythm
 
-Receive what arrived (Receive tab) → assemble from templates (Packages tab shows what can be fully assembled) → hand off to a partner (agency and date only) → watch the Impact page.
+**Daily:** triage Requests (fill from stock, call about anything at risk) → schedule claims and assign pairs on Pickups → count arrivals on Receive → plan a delivery run per site on Deliveries.
+
+**Weekly:** check Shifts coverage for the next four weeks, top up Stock against the targets, and look at the Impact page: the number to watch is the median time from request to delivery (target: under 72 hours).

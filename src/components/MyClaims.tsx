@@ -85,7 +85,7 @@ export function ClaimCard({ p, zones, today }: { p: ClaimView; zones: Zone[]; to
   const [panel, setPanel] = useState<"" | "reschedule" | "concern">("");
   const confirmed = p.pickup?.windows.find((w) => w.id === p.pickup!.scheduledWindowId);
   return (
-    <article className="pledge" aria-label={`Claim: ${p.request.label}, ${CLAIM_STATUS_LABELS[p.status]}`}>
+    <article className="claim-card" aria-label={`Claim: ${p.request.label}, ${CLAIM_STATUS_LABELS[p.status]}`}>
       <h3>
         {p.quantity} × {p.request.label} <span className={`status ${p.status}`}>{CLAIM_STATUS_LABELS[p.status]}</span>
       </h3>

@@ -181,9 +181,9 @@ details > summary { cursor: pointer; font-weight: 600; }
 .status.collected, .status.received { color: var(--good); border-color: var(--good); background: var(--good-bg); }
 .status.cancelled, .status.no_show, .status.overdue { color: var(--bad); border-color: var(--bad); background: var(--bad-bg); }
 .status.scheduled { color: var(--link); border-color: var(--link); background: var(--info-bg); }
-.pledge { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; margin: 0.9rem 0; }
-.pledge h3 { margin: 0 0 0.3rem; }
-.pledge ul { margin: 0.4rem 0; }
+.claim-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; margin: 0.9rem 0; }
+.claim-card h3 { margin: 0 0 0.3rem; }
+.claim-card ul { margin: 0.4rem 0; }
 .private { border: 1px dashed var(--border-strong); background: var(--surface-2); border-radius: var(--radius); padding: 0.7rem 1rem; margin: 0.7rem 0; }
 .private dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; }
 .private dt { color: var(--muted); font-size: 0.85rem; }

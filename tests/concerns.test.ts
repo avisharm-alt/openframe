@@ -31,23 +31,23 @@ function pickupWithTwo() {
 }
 
 describe("concern reports", () => {
-  it("a donor can report a concern about the volunteers, and an assigned volunteer about the donor", () => {
+  it("a neighbour can report a concern about the volunteers, and an assigned volunteer about the neighbour", () => {
     const { claimId } = pickupWithTwo();
     fileConcern(w.neighbour, { claimId, category: "conduct", details: "One volunteer was rude" });
-    fileConcern(w.vol1, { claimId, category: "safety", details: "Donor was aggressive" });
+    fileConcern(w.vol1, { claimId, category: "safety", details: "Neighbour was aggressive" });
     const q = listConcerns(w.lonCoord, w.london.id);
     expect(q.map((r) => [r.reporterRole, r.category, r.priority])).toEqual([["volunteer", "safety", 2], ["neighbour", "conduct", 1]]); // safety first
     expect(q[0]).toMatchObject({ neighbourName: "Neighbour", volunteers: ["Vol One", "Vol Two"], state: "open" });
   });
 
-  it("nobody else can report on a pledge (they get a 404, as for any pledge that is not theirs)", () => {
+  it("nobody else can report on a claim (they get a 404, as for any claim that is not theirs)", () => {
     const { claimId } = pickupWithTwo();
     for (const who of [w.stranger, w.neighbour2, w.vol3, w.oshVol, w.lonCoord]) {
       expect(code(() => fileConcern(who, { claimId, category: "other", details: "x" })), who.name).toBe("not_found");
     }
   });
 
-  it("a donor cannot report volunteers before any are assigned", () => {
+  it("a neighbour cannot report volunteers before any are assigned", () => {
     const claimId = claimNew();
     expect(code(() => fileConcern(w.neighbour, { claimId, category: "conduct", details: "x" }))).toBe("no_volunteers_yet");
   });

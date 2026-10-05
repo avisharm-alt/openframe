@@ -3,7 +3,7 @@ import { guardRequest } from "@/lib/guard";
 import { rateLimit, resetRateLimits } from "@/lib/ratelimit";
 
 const opts = { baseUrl: "http://localhost:3000", trustProxy: false };
-const req = (init: RequestInit & { url?: string }) => new Request(init.url ?? "http://localhost:3000/api/pledges", init);
+const req = (init: RequestInit & { url?: string }) => new Request(init.url ?? "http://localhost:3000/api/claims", init);
 
 describe("request guard", () => {
   it("rejects multipart and other non-JSON bodies (no file uploads)", () => {
