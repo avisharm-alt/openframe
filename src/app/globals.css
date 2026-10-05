@@ -215,3 +215,69 @@ input[type="file"]::file-selector-button {
   border: 1px solid var(--border-strong); border-radius: var(--radius);
   background: var(--surface-2); color: var(--text); font: inherit; cursor: pointer;
 }
+
+/* Institutional editorial direction: restrained, warm, and information-first. */
+:root {
+  --bg: #f8f7f3;
+  --surface: #ffffff;
+  --surface-2: #eef1f4;
+  --text: #162b49;
+  --muted: #536579;
+  --border: #d5dce3;
+  --border-strong: #9aaabd;
+  --link: #126e9b;
+  --primary: #9e1b32;
+  --primary-hover: #7f1428;
+  --on-primary: #ffffff;
+  --header-bg: #17365d;
+  --header-text: #ffffff;
+  --good: #176b50;
+  --good-bg: #e7f3ed;
+  --bad: #a1262e;
+  --bad-bg: #f8e8e9;
+  --warn: #7b5b13;
+  --warn-bg: #fbf3d9;
+  --warn-border: #d8bd72;
+  --info-bg: #e8f1f6;
+  --info-border: #9ebdce;
+  --radius: 2px;
+  --max: 78rem;
+  color-scheme: light;
+}
+body { background: var(--bg); color: var(--text); font-family: Arial, Helvetica, sans-serif; }
+h1, h2, h3 { font-family: Georgia, 'Times New Roman', serif; font-weight: 400; letter-spacing: -0.02em; }
+h1 { font-size: clamp(2.7rem, 6vw, 5.8rem); line-height: 0.98; }
+h2 { font-size: 1.8rem; }
+a { color: var(--link); }
+.demo-banner { background: #9e1b32; color: #fff; border: 0; }
+.site-notice { background: #e8edf2; border-bottom: 1px solid #c7d1db; color: #354b63; }
+header.site { position: relative; background: var(--header-bg); border-bottom: 5px solid #c99a35; box-shadow: none; }
+header.site .wrap { min-height: 7rem; padding-top: 1.25rem; padding-bottom: 1.1rem; align-items: flex-end; }
+.brand { font-family: Georgia, 'Times New Roman', serif; font-size: 1.65rem; letter-spacing: 0; margin-right: 1.5rem; }
+.brand-mark { width: 2.4rem; height: 2.4rem; border: 1px solid #c99a35; border-radius: 0; color: #fff; font-family: Georgia, 'Times New Roman', serif; font-size: 1.25rem; }
+nav.main { gap: 1.5rem; font-size: 0.82rem; letter-spacing: 0.055em; text-transform: uppercase; }
+nav.main a { color: #fff; opacity: 0.9; padding: 0.45rem 0; }
+nav.main a[aria-current="page"] { border-bottom-color: #c99a35; }
+header.site .btn { background: #fff; border-color: #fff; color: #17365d; border-radius: 2px; }
+main { padding: 0 0 5rem; }
+.hero { max-width: none; margin: 0 calc(clamp(1.25rem, 4vw, 3rem) * -1); padding: clamp(4rem, 9vw, 7.5rem) clamp(1.25rem, 8vw, 9rem) clamp(3.5rem, 7vw, 6rem); background: linear-gradient(105deg, #e7edf2 0%, #f8f7f3 68%); border-bottom: 1px solid var(--border); }
+.hero::before { content: 'OPENFRAME / ACADEMIC PRACTICE'; color: var(--primary); font-family: Arial, Helvetica, sans-serif; letter-spacing: 0.12em; }
+.hero h1 { max-width: 11ch; color: #17365d; }
+.hero p { max-width: 39rem; color: #40566c; font-size: 1.15rem; }
+.search { max-width: 58rem; margin-top: 2.5rem; padding: 1.25rem; background: #fff; border: 1px solid #c9d2dc; box-shadow: 0 8px 24px rgba(23,54,93,0.08); }
+.search-label { color: #536579; }
+.search-controls { gap: 0; }
+.search input { border-radius: 2px 0 0 2px; border-right: 0; padding: 0.8rem 1rem; background: #fff; }
+.search .btn { border-radius: 0 2px 2px 0; padding: 0.8rem 1.5rem; }
+.course-section { border-top: 5px solid #17365d; padding-top: 1.25rem; margin-top: 3rem; }
+.course-section-heading h2 { color: #17365d; }
+.university-grid { gap: 1rem; margin-top: 1.5rem; }
+.university-panel { min-height: 15rem; border-radius: 0; border: 1px solid #cbd4dd; border-top: 6px solid #9e1b32; padding: 1.5rem 1.6rem; background: #fff; box-shadow: 0 2px 6px rgba(23,54,93,0.05); }
+.university-panel:hover { transform: none; border-color: #17365d; border-top-color: #c99a35; background: #f5f8fa; }
+.university-panel-index { color: #9e1b32; }
+.university-panel-name { color: #17365d; font-family: Georgia, 'Times New Roman', serif; font-size: 1.55rem; font-weight: 400; }
+.university-panel-foot { border-top: 1px solid #d5dce3; padding-top: 0.8rem; }
+.card, .notice { border-radius: 2px; box-shadow: 0 1px 3px rgba(23,54,93,0.06); }
+footer.site { background: #17365d; color: #d5e0ea; border-top: 6px solid #c99a35; }
+footer.site a { color: #fff; }
+@media (max-width: 40rem) { .hero { margin: 0 -1.25rem; } .search-controls { flex-direction: column; gap: 0.5rem; } .search input, .search .btn { border-radius: 2px; border: 1px solid var(--border-strong); } }
