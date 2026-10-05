@@ -6,7 +6,7 @@ import { setMember } from "@/lib/services/chapters";
 import { listItems } from "@/lib/services/items";
 import { adjustStock, appendLedger, listInventory, listLedger, stockOf } from "@/lib/services/inventory";
 import { assemblePackages, handOffPackages, listAssemblable, listPackages } from "@/lib/services/packages";
-import { createPartner } from "@/lib/services/chapters";
+import { createPartner } from "@/lib/services/partners";
 import { createTemplate } from "@/lib/services/templates";
 import type { Actor } from "@/lib/types";
 import { localDate } from "@/lib/time";

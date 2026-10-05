@@ -61,3 +61,8 @@ export const isDateString = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Num
 export function formatLocal(d: Date | string, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz, weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(typeof d === "string" ? new Date(d) : d);
 }
+
+/** Local clock time only, e.g. "2:30 p.m." */
+export function formatTime(d: Date | string, tz: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: tz, hour: "numeric", minute: "2-digit" }).format(typeof d === "string" ? new Date(d) : d);
+}

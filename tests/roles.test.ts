@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { freshDb, makeUser } from "./helpers";
 import { getChapterBySlug, isCoordinatorOf, isVolunteerOf } from "@/lib/services/access";
-import { createChapter, createPartner, createZone, listMembers, removeMember, setMember, updatePartner, updateZone } from "@/lib/services/chapters";
+import { createChapter, listMembers, removeMember, setMember } from "@/lib/services/chapters";
+import { createPartner, updatePartner } from "@/lib/services/partners";
+import { createZone, updateZone } from "@/lib/services/zones";
 import { createItem, listItems } from "@/lib/services/items";
 import { adjustStock, listInventory, listLedger } from "@/lib/services/inventory";
 import { createNeed, listNeeds, updateNeed } from "@/lib/services/needs";

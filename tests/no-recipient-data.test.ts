@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { freshDb, makeUser } from "./helpers";
 import { getDb } from "@/lib/db";
 import { getChapterBySlug } from "@/lib/services/access";
-import { createPartner, setMember } from "@/lib/services/chapters";
+import { setMember } from "@/lib/services/chapters";
+import { createPartner } from "@/lib/services/partners";
 import { listItems } from "@/lib/services/items";
 import { appendLedger } from "@/lib/services/inventory";
 import { assemblePackages, handOffPackages } from "@/lib/services/packages";

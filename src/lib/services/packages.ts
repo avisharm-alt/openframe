@@ -6,7 +6,7 @@ import { localDate, addDays } from "../time";
 import { logAudit } from "./audit";
 import { getChapter, requireCoordinator } from "./access";
 import { appendLedger, stockByItem } from "./inventory";
-import { getPartner } from "./chapters";
+import { getPartner } from "./partners";
 import { getTemplate, listTemplates, syncTemplateNeeds } from "./templates";
 
 export type Assemblable = { templateId: string; name: string; maxPackages: number; missing: { itemId: string; name: string; short: number }[] };
