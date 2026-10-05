@@ -11,8 +11,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
   return (
     <>
       <section className="hero">
-        <h1>Find your courses</h1>
-        <p className="muted">Choose your university to browse its courses and practice questions, or search across all courses.</p>
+        <h1>Study with intention.</h1>
+        <p className="muted">Find the right course, build your confidence, and practice with questions made for how students actually learn.</p>
         <form role="search" className="search" action="/" method="get">
           <label htmlFor="q" className="search-label">Search courses and topics</label>
           <div className="search-controls">
@@ -58,7 +58,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
       ) : null}
 
       <details id="request" style={{ marginTop: "2rem" }} open={!!q && courses.length === 0}>
-        <summary>Don’t see your course? Request it</summary>
+        <summary>Can&apos;t find your course? Request it</summary>
         <div style={{ marginTop: "0.6rem" }}>
           <CourseRequestForm initialCode={q && courses.length === 0 ? q : ""} universities={universities} />
         </div>

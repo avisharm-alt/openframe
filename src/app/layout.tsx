@@ -30,7 +30,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </div>
         <header className="site">
           <div className="wrap">
-            <Link href="/" className="brand">OpenFrame</Link>
+            <Link href="/" className="brand"><span className="brand-mark" aria-hidden="true">O</span> OpenFrame</Link>
             <nav className="main" aria-label="Main">
               <Link href="/">Courses</Link>
               <Link href="/saved">Saved &amp; history</Link>
