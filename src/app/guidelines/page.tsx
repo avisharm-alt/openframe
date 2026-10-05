@@ -1,38 +1,49 @@
 import Link from "next/link";
-export const metadata = { title: "Contribution guidelines" };
+import { ACCEPTED, NEW_ONLY_NOTE, NOT_ACCEPTED } from "@/lib/copy";
+
+export const metadata = { title: "Guidelines" };
+
 export default function Guidelines() {
   return (
     <div style={{ maxWidth: "44rem" }}>
-      <h1>Contribution guidelines</h1>
-      <h2>Uploading course notes</h2>
-      <p><Link href="/course-notes">Upload course notes</Link> as PDF or plain text files up to 10 MB. Share your own notes or material you have permission to share. Do not include exam or quiz questions or personal information. Files are private to you and the OpenFrame review team; uploading does not publish them or automatically generate questions.</p>
-      <h2>What a good question looks like</h2>
+      <h1>Guidelines</h1>
+      <p className="muted">How we ask everyone to take part. These apply to donors, volunteers and coordinators.</p>
+
+      <h2>For donors</h2>
+      <h3>What we accept</h3>
+      <ul>{ACCEPTED.map((a) => <li key={a}>{a}</li>)}</ul>
+      <p className="small muted">{NEW_ONLY_NOTE}</p>
+      <h3>What we can’t accept</h3>
+      <ul>{NOT_ACCEPTED.map((a) => <li key={a}>{a}</li>)}</ul>
       <ul>
-        <li>Original wording, tied to a specific course topic and a specific learning objective.</li>
-        <li>Four or five distinct options, exactly one defensible correct answer.</li>
-        <li>An explanation for the correct answer <i>and</i> for each distractor, written so each stands on its own.</li>
-        <li>Prefer application, interpretation and conceptual understanding over recall.</li>
-        <li>Avoid trick wording, needless negatives, an obviously longer correct answer, overlapping options, and “all/none of the above”.</li>
-        <li>Options are shuffled, so nothing may depend on option position (“both A and B”).</li>
+        <li>Pledge only what is on the needs list, and only what you will really give. If your plans change, cancel or reschedule from <Link href="/pledges">My pledges</Link>.</li>
+        <li>You can have at most 3 open pickup pledges at a time. Drop-offs have no such limit.</li>
+        <li>Be at the door during your window and hand items over at the door. Volunteers will not come inside.</li>
+        <li>Treat volunteers respectfully. If anyone makes you uncomfortable, report a concern from My pledges.</li>
       </ul>
-      <h2>Provenance and checking</h2>
+
+      <h2>For volunteers</h2>
       <ul>
-        <li>State whether the question is AI-generated or AI-assisted. Name the tool and date only if you actually know them. Never invent them.</li>
-        <li>Describe how you checked the answer. AI output must be checked by a person.</li>
-        <li>References are optional. Cite only what you are allowed to share; do not fabricate sources. OpenFrame never fetches or verifies links.</li>
+        <li>Read and acknowledge the <Link href="/safety">Safety rules</Link> before your first pickup. They are not optional.</li>
+        <li>Always go in pairs, in daytime, and never inside a home. Leave whenever you feel unsafe.</li>
+        <li>Keep every address private. Do not copy, photograph or share it.</li>
+        <li>Never record, photograph or describe the people who receive packages.</li>
+        <li>Check in and out with the buttons in My pickups, so coordinators know you are safe.</li>
       </ul>
-      <h2>Rules</h2>
+
+      <h2>For coordinators</h2>
       <ul>
-        <li>No professor-created exams, quizzes, tests, answer keys, screenshots, scans, copied or reconstructed questions. See <Link href="/academic-integrity">academic integrity</Link>.</li>
-        <li>Question drafts accept structured text only. Course notes use the separate upload form. Markdown and LaTeX are supported in questions; HTML, scripts and images are not.</li>
-        <li>You must confirm the originality and permission statement on every submission.</li>
-        <li>Course association does not give you permission to reproduce lecture slides, textbook questions, or other protected material.</li>
+        <li>Post needs honestly and keep templates and weekly targets realistic. Close a need when it is no longer needed.</li>
+        <li>Count donations accurately and discard anything unsafe or unusable, with a note.</li>
+        <li>Never enter anything about the people who receive packages. Hand-offs record the agency and the date only.</li>
+        <li>Review concern reports promptly, safety concerns first.</li>
+        <li>Add only people you know and trust as volunteers, and remind them of the Safety rules.</li>
       </ul>
-      <h2>Review</h2>
+
+      <h2>Everyone</h2>
       <p>
-        Nothing is published immediately. Another student reviews against a checklist (attestation, mapping, one defensible answer, correct explanations, plausible distractors, no actual assessment
-        content, no unsupported references). You can see the status and any requested changes. Edits to a published question create a new revision that is reviewed again; the approved version stays live meanwhile.
-        You cannot review your own submissions.
+        Be respectful and assume good faith. No harassment, discrimination, threats or personal attacks. Speak about people experiencing homelessness with dignity: they are our neighbours. Our full
+        expectations are in the Code of Conduct in the repository. Report problems through a concern report or the contact on the <Link href="/privacy">Privacy page</Link>.
       </p>
     </div>
   );

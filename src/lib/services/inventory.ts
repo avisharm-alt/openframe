@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { getDb, now, uid } from "../db";
 import { conflict } from "../errors";
 import { adjustSchema } from "../validation";
@@ -59,7 +58,7 @@ export function listLedger(actor: Actor, chapterId: string, limit = 50): LedgerR
 }
 
 /** Manual stock corrections: a signed count fix, or discarding spoiled / unusable items. Always with a note. */
-export function adjustStock(actor: Actor, chapterId: string, raw: z.input<typeof adjustSchema>) {
+export function adjustStock(actor: Actor, chapterId: string, raw: unknown) {
   requireCoordinator(actor, chapterId);
   const input = adjustSchema.parse(raw);
   getItem(input.itemId);

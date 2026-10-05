@@ -19,7 +19,7 @@ export function SignOutButton() {
   );
 }
 
-export function GoogleButton() {
+export function GoogleButton({ next = "/" }: { next?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
@@ -34,8 +34,8 @@ export function GoogleButton() {
           // On success the browser is redirected to Google; on failure we stay here.
           const res = await authClient.signIn.social({
             provider: "google",
-            callbackURL: "/",
-            newUserCallbackURL: "/account?welcome=1",
+            callbackURL: next,
+            newUserCallbackURL: `/account?welcome=1&next=${encodeURIComponent(next)}`,
             errorCallbackURL: "/auth/sign-in?error=oauth",
           });
           if (res?.error) {
@@ -52,7 +52,7 @@ export function GoogleButton() {
 }
 
 /** Demo mode only: email+password so the seeded demo accounts and automated tests can sign in without Google. */
-export function DemoPasswordForm() {
+export function DemoPasswordForm({ next = "/" }: { next?: string }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -67,7 +67,7 @@ export function DemoPasswordForm() {
         setError(res.error.status === 429 ? "Too many attempts. Please wait and try again." : "That email and password did not match.");
         return;
       }
-      router.push("/");
+      router.push(next);
       router.refresh();
     } catch {
       setError("Could not reach the server. Please try again.");
@@ -105,7 +105,7 @@ export function DisplayNameForm({ initial }: { initial: string }) {
         }
       }}
     >
-      <label htmlFor="dn" style={{ marginTop: 0 }}>Display name <span className="help">A pseudonym is best: it appears to reviewers, and publicly only if you choose attribution on a contribution. Please don’t use your real name or student number.</span></label>
+      <label htmlFor="dn" style={{ marginTop: 0 }}>Display name <span className="help">A pseudonym is best: coordinators and your volunteer partner see it. Please don’t use your real name.</span></label>
       <input id="dn" type="text" value={name} minLength={2} maxLength={40} required onChange={(e) => setName(e.target.value)} />
       {msg && <p role={msg.ok ? "status" : "alert"} className={msg.ok ? "small" : "field-error"}>{msg.text}</p>}
       <p><button className="btn secondary">Save display name</button></p>

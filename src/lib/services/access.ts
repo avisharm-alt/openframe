@@ -46,3 +46,14 @@ export function requireVolunteer(actor: Actor, chapterId: string) {
 export function requireAdmin(actor: Actor) {
   if (!isAdmin(actor)) throw forbidden("Admin access required.");
 }
+
+export type Membership = { chapterId: string; slug: string; name: string; role: ChapterRole };
+/** The chapters a user belongs to. Admins are listed separately by the caller (they can coordinate any chapter). */
+export function listMemberships(userId: string): Membership[] {
+  return getDb()
+    .prepare(
+      `SELECT c.id AS chapterId, c.slug, c.name, m.role FROM chapter_member m JOIN chapter c ON c.id = m.chapter_id
+        WHERE m.user_id = ? ORDER BY c.name`,
+    )
+    .all(userId) as Membership[];
+}

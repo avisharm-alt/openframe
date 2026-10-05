@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { getDb, now, uid } from "../db";
 import { conflict, invalid, notFound } from "../errors";
 import { rateLimit } from "../ratelimit";
@@ -290,7 +289,7 @@ export function listAwaitingReceipt(actor: Actor, chapterId: string): AwaitingRe
  * Counts a pledge into inventory: a quick count per pledged line (which may differ from what was pledged, down
  * to zero) plus any extra items that nobody pledged. One transaction: ledger rows, pledge status and need statuses.
  */
-export function receivePledge(actor: Actor, pledgeId: string, raw: z.input<typeof receiveSchema>) {
+export function receivePledge(actor: Actor, pledgeId: string, raw: unknown) {
   const p = loadPledge(pledgeId);
   requireCoordinator(actor, p.chapter_id);
   const input = receiveSchema.parse(raw);

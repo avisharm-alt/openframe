@@ -408,7 +408,7 @@ export function myAssignments(actor: Actor, at: Date = nowDate()): VolunteerPick
     const n = assignedCount(k.id);
     return {
       pickupId: k.id, pledgeId: k.pledge_id, chapterSlug: ch.slug, chapterName: ch.name, timezone: ch.timezone, status: k.status,
-      window: w, partners: (db.prepare("SELECT u.name FROM pickup_assignment a JOIN \"user\" u ON u.id = a.volunteer_id WHERE a.pickup_id = ? AND a.volunteer_id <> ?").all(k.id, actor.id) as { name: string }[]).map((x) => x.name),
+      window: w, partners: (db.prepare("SELECT u.name FROM pickup_assignment a JOIN \"user\" u ON u.id = a.volunteer_id WHERE a.pickup_id = ? AND a.volunteer_id <> ? ORDER BY a.assigned_at, a.rowid").all(k.id, actor.id) as { name: string }[]).map((x) => x.name),
       units: (db.prepare("SELECT COALESCE(SUM(quantity),0) AS n FROM pledge_item WHERE pledge_id = ?").get(k.pledge_id) as { n: number }).n,
       visibleFrom: ref ? hoursFrom(ref.start, -config.pickupVisibleHoursBefore).toISOString() : null,
       addressVisibleNow: access.allowed,

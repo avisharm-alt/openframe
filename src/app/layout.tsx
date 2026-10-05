@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 import { currentActor } from "@/lib/session";
+import { listMemberships } from "@/lib/services/access";
+import { isAdmin } from "@/lib/types";
+import { SITE_NOTICE } from "@/lib/copy";
 import { config } from "@/lib/config";
 import { SignOutButton } from "@/components/AuthForms";
 
@@ -13,6 +16,9 @@ export const dynamic = "force-dynamic";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const actor = await currentActor();
+  const memberships = actor ? listMemberships(actor.id) : [];
+  const volunteers = memberships.length > 0;
+  const coordinates = actor ? isAdmin(actor) || memberships.some((m) => m.role === "coordinator") : false;
   return (
     <html lang="en">
       <body>
@@ -22,11 +28,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             Demo mode: all chapters, needs and people are demonstration data.
           </div>
         )}
+        <div className="site-notice" role="note" aria-label="About this site">
+          <div className="wrap">{SITE_NOTICE}</div>
+        </div>
         <header className="site">
           <div className="wrap">
             <Link href="/" className="brand">OpenFrame</Link>
             <nav className="main" aria-label="Main">
               <Link href="/">Needs</Link>
+              <Link href="/impact">Impact</Link>
+              {actor && <Link href="/pledges">My pledges</Link>}
+              {volunteers && <Link href="/volunteer">My pickups</Link>}
+              {coordinates && <Link href="/coordinate">Coordinate</Link>}
+              {actor && isAdmin(actor) && <Link href="/admin">Admin</Link>}
             </nav>
             <div className="row small">
               {actor ? (
@@ -48,6 +62,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <nav aria-label="Policies">
               <Link href="/about">About</Link>
               <Link href="/guidelines">Guidelines</Link>
+              <Link href="/safety">Safety</Link>
               <Link href="/privacy">Privacy</Link>
             </nav>
             <p>

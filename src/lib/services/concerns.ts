@@ -59,7 +59,7 @@ export function listConcerns(actor: Actor, chapterId: string, state?: string): C
   return rows.map((r) => ({
     ...r,
     volunteers: r.pledgeId
-      ? (db.prepare("SELECT u.name FROM pickup_assignment a JOIN pickup k ON k.id = a.pickup_id JOIN \"user\" u ON u.id = a.volunteer_id WHERE k.pledge_id = ?").all(r.pledgeId) as { name: string }[]).map((v) => v.name)
+      ? (db.prepare("SELECT u.name FROM pickup_assignment a JOIN pickup k ON k.id = a.pickup_id JOIN \"user\" u ON u.id = a.volunteer_id WHERE k.pledge_id = ? ORDER BY a.assigned_at, a.rowid").all(r.pledgeId) as { name: string }[]).map((v) => v.name)
       : [],
   }));
 }

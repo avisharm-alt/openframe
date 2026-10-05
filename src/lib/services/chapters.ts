@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { getDb, now, uid } from "../db";
 import { conflict, forbidden, invalid, notFound } from "../errors";
 import { chapterSchema, memberSchema } from "../validation";
@@ -20,7 +19,7 @@ export function listChapters(opts: { includeInactive?: boolean } = {}): Chapter[
 const slugify = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
 
 /** Chapters are data: any campus can be added without a code change. Admin only. */
-export function createChapter(actor: Actor, raw: z.input<typeof chapterSchema>): Chapter {
+export function createChapter(actor: Actor, raw: unknown): Chapter {
   requireAdmin(actor);
   const input = chapterSchema.parse(raw);
   const slug = input.slug ?? slugify(input.city.replace(/,.*$/, ""));
