@@ -1,4 +1,5 @@
 "use client";
+import { ScrollTable } from "../ScrollTable";
 import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { CATEGORY_LABELS } from "@/lib/types";
@@ -63,24 +64,24 @@ export function InventoryTab({ slug, inventory, ledger }: { slug: string; invent
       <p className="muted">Stock is the sum of an append-only ledger: every change below is a row, and stock can never go below zero.</p>
       <label className="check"><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /><span>Show items with no stock</span></label>
       {rows.length === 0 ? <p className="empty">No stock yet. Count in a pledge on the Receive tab.</p> : (
-        <div className="table-wrap">
+        <ScrollTable label="Stock on hand">
           <table className="compact">
             <caption className="sr-only">Stock on hand</caption>
             <thead><tr><th scope="col">Item</th><th scope="col">Category</th><th scope="col">Stock</th></tr></thead>
             <tbody>{rows.map((r) => <tr key={r.itemId}><td>{r.name}</td><td>{CATEGORY_LABELS[r.category]}</td><td>{r.stock} {r.unit}</td></tr>)}</tbody>
           </table>
-        </div>
+        </ScrollTable>
       )}
       <h3>Correct stock</h3>
       <AdjustForm slug={slug} inventory={inventory} />
       <h3>Recent ledger entries</h3>
-      <div className="table-wrap">
+      <ScrollTable label="Recent inventory ledger entries">
         <table className="compact">
           <caption className="sr-only">Recent inventory ledger entries</caption>
           <thead><tr><th scope="col">When</th><th scope="col">Item</th><th scope="col">Change</th><th scope="col">Kind</th><th scope="col">Note</th></tr></thead>
           <tbody>{ledger.map((l) => <tr key={l.id}><td>{l.createdAt.slice(0, 16).replace("T", " ")}</td><td>{l.itemName}</td><td>{l.delta > 0 ? `+${l.delta}` : l.delta}</td><td>{KIND_LABELS[l.kind]}</td><td>{l.note}</td></tr>)}</tbody>
         </table>
-      </div>
+      </ScrollTable>
     </>
   );
 }
@@ -154,13 +155,13 @@ export function PackagesTab({ slug, assemblable, assembled, handedOff, partners,
 
       <h3>Recently handed off</h3>
       {handedOff.length === 0 ? <p className="empty">None yet.</p> : (
-        <div className="table-wrap">
+        <ScrollTable label="Packages handed off">
           <table className="compact">
             <caption className="sr-only">Packages handed off</caption>
             <thead><tr><th scope="col">Date</th><th scope="col">Package</th><th scope="col">Partner agency</th></tr></thead>
             <tbody>{handedOff.slice(0, 25).map((p) => <tr key={p.id}><td>{p.handedOffOn}</td><td>{p.templateName}</td><td>{p.agencyName}</td></tr>)}</tbody>
           </table>
-        </div>
+        </ScrollTable>
       )}
     </>
   );

@@ -1,48 +1,35 @@
-# Implementation plan and notes
+# Implementation notes
 
-## Plan (as built, in vertical slices)
+## What was built (vertical slices)
 
-1. **Course discovery + one complete practice session** — schema, catalog, practice service/API, search, setup, session player, results. ✅
-2. **Contributions + moderation** — structured editor with preview, drafts, revisions, checklist review, queue. ✅
-3. **Accounts + saved progress** — Better Auth, private history, bookmarks, account deletion. ✅
-4. **Reports + withdrawals** — anyone can report; priority queue; withdraw/restore; audit events. ✅
-5. **Final accessibility + security pass** — keyboard-only run, axe-core scans, upload/CSRF/escalation probes, CSP and request guard. ✅ (automated; see limits below)
+0. **Restructure.** Question-bank domain removed (migration 006 drops its tables; the old app is tagged `question-bank-final`). Auth, request guard, rate limiter, CSP, health, backup, grant-role, e2e/axe harness and demo mode kept. `moderation_event` became the append-only `audit_event`.
+1. **Model and stock.** Chapters, chapter roles, catalog, package templates, needs (posted and derived), zones, partners, inventory ledger, packages, hand-offs, impact.
+2. **Pledges and safe pickups.** State machine, donor limits, encrypted pickup details, daytime windows, two-person rule, safety acknowledgement, visibility rule, audited views, check-in/out, overdue, purge, concern reports, email interface.
+3. **API and UI.** Public board and impact, pledging, My pledges, volunteer view, coordinator dashboard, admin page, Safety/About/Guidelines/Privacy.
+4. **Demo, e2e, docs.**
 
-## Key decisions / assumptions
+## Key decisions
 
-- **Publication state vs review metadata vs report state are separate.** `question.state` = draft | pending_review | changes_requested | published | rejected | withdrawn. Review metadata (`review_status`, reviewer, date, version) is on `question_revision`. Reports have their own state machine. Seeds are *published but unreviewed*; default practice only draws *student-reviewed* questions, so demo content needs "Include unreviewed".
-- **Revisions are immutable once submitted.** Only `draft` revisions are editable. "Edit" on a published/changes-requested question creates revision N+1. `question.live_revision_id` points at the approved revision served to learners. Option ids are stable across revisions (`question_option` PK = revision + option id).
-- **Sessions pin revisions** (`session_question.revision_id`) and store a per-question shuffled option order of stable ids; correctness and explanations are always looked up by id, never by position.
-- **Withdrawal is checked at read time** on every delivery path (`PUBLISHED` fragment; session state/answer/results re-check the question's state). Pinned revisions do not keep withdrawn questions alive.
-- **Self-test never leaks**: `getSessionState` only includes `reveal` for practice-mode answered items or finished sessions; the answer endpoint returns only `{saved:true}` in self-test mode.
-- **Guest sessions** are server-side (needed for server scoring) and addressed by an unguessable UUID; the browser keeps a local list for history. Signed-in sessions are private to the user (404 for anyone else).
-- **No authentication via client roles.** Roles are a DB column on Better Auth's `user` table with `input:false`; changed only by `npm run admin:grant`.
-- **Private course-note uploads**: authenticated multipart is allowed only at /api/course-notes, with a streamed request cap, 10 MB PDF/TXT limit, 50 MB account quota, and rate limit. Files are SQLite BLOBs, never rendered publicly; authenticated downloads are attachments available only to the owner and reviewers. Account deletion cascades to uploads. Other endpoints retain the JSON-only guard.
-- **Single-process assumptions**: in-memory rate limiter; SQLite file. Fine for the MVP; document before scaling out.
-- Demo mode is isolated: `OPENFRAME_DEMO=1` is required to seed, seeding refuses in production, and a banner is shown.
+- **Roles.** `user.role` is `member | admin`. Volunteer and coordinator are per chapter (`chapter_member`), always read from the database, never from the request. Admins can coordinate any chapter but are volunteers only if they are members of one.
+- **Needs.** A *posted* need is a coordinator's target that pledges fill (received counts only pledges counted against it). A *standing* need is derived live from active templates: `target(item) = Σ (weekly target − packages assembled this week) × quantity`, and `shortfall = max(0, target − stock)`. Counting packages already assembled this week toward the target is a deliberate refinement of "target × contents − stock": without it, assembling a kit empties the shelf and the board would ask for the same socks again the same week. With nothing assembled yet the two are identical. A `need` row exists per derived item only so pledges can point at it; the board always computes live. Pledges can cover at most what is still unpledged.
+- **Pledge state machine.** `pledged → scheduled → collected → received | cancelled | no_show`. A pickup cannot skip ahead (only its volunteers or a coordinator override with a reason mark it collected). Drop-offs may be counted straight from pledged. `scheduled → pledged` exists only for pickups that lose a volunteer. Pickups auto-schedule when a window is confirmed and the second volunteer is assigned.
+- **Address rule** (`addressAccess`): donor always (until purge); coordinators for open pickups from 24h before the confirmed window (or the earliest preferred window until one is confirmed); assigned volunteers only when the pickup is scheduled, in the same time frame; nobody once closed (except the donor) or purged. Unrelated people get 404, not 403, so the pickup's existence is not revealed. One function decrypts; each call is audited and rate limited.
+- **Closing a pickup.** Both volunteers tap Done → collected. Nobody home → no-show. Safety concern → cancelled plus a priority concern report. Other → cancelled with the note. "I can no longer make it" → only that volunteer is removed and the pickup reopens.
+- **Purge clock.** `pledge.closed_at` is set the first time a pledge is collected, cancelled, no-show (or received without having been collected, for drop-offs). The purge nulls the three encrypted columns after `PICKUP_PURGE_DAYS`.
+- **Append-only by triggers.** `audit_event` and `inventory_ledger` cannot be updated or deleted, except that account deletion may null `actor_id` through the foreign key. A trigger also rejects any ledger row that would take stock below zero; assembly runs in one transaction.
+- **No recipient data.** No table or column for recipients; strict input schemas; a test inspects the whole schema.
+- **Clock.** Services call `nowDate()` so tests can move time (`setClock`).
+- **Single-process assumptions**: in-memory rate limiter, one SQLite file.
 
-## Verification summary
+## Verification
 
-Run on this branch (see README for commands):
-
-- `npm run lint`, `npm run typecheck`: clean.
-- `npm test`: 29 tests across practice, contribution/moderation (incl. queue cap), request-guard and auth-config suites.
-- `npm run e2e`: HTTP walkthrough — 41/41 checks on a demo server (contribution → independent review → publication → practice → report → withdrawal; uploads; CSRF origin; role escalation; cross-user access; display-name rules; account deletion) plus 8/8 on a second production-style server (password login refused, valid Google OAuth start with PKCE and exact redirect URI, basic scopes only), and browser check — keyboard-only guest practice at 1100px and 375px, axe-core clean (no violations on WCAG 2.0/2.1/2.2 A/AA rule tags) on home, course, setup, session, feedback, results, policy, auth, saved, contribute, moderation, review and editor pages.
-- `npm audit`: 0 known vulnerabilities at the time of writing.
+- `npm run check`: eslint, tsc and 130 Vitest tests, including: pledge state machine, two-volunteer rule, daytime windows (and DST), address visibility (who and when) and purge, ledger and atomic assembly, needs derivation, per-chapter role scoping, and no recipient data. The safety rules were mutation-checked (breaking each rule makes tests fail).
+- `npm run e2e`: HTTP walkthrough (136 checks on a demo server) plus the production-style server checks, plus the browser check (179 checks: keyboard-only flows and axe-core at 1100px and 375px, light and dark).
 
 ### What these checks do not cover
 
-- No manual screen-reader (NVDA/VoiceOver) or 200–400% zoom testing; axe finds only a subset of WCAG issues.
-- The e2e uses a throwaway SQLite DB and the demo seed; the **demo accounts and demo content are substitutes** for real users/content, not functioning production integrations.
-- **Google sign-in has not been exercised end to end.** The checks prove our side (the authorize URL, redirect URI, PKCE/state, scopes, refusal of password login, pseudonymisation mapping). The step where a real Google account approves and returns to `/api/auth/callback/google` needs real Google credentials and has not been run. Demo mode uses password login as a substitute.
-- No load testing.
-
-## Remaining launch requirements (genuine)
-
-1. **Owner decisions:** confirm the content license and contributor wording (`docs/CONTENT-LICENSE.md`); decide on attribution defaults.
-2. **Real contacts:** configure `CONTENT_REMOVAL_CONTACT` and `SECURITY_CONTACT`; update `SECURITY.md` / `CODE_OF_CONDUCT.md`.
-3. **Reviewers and courses:** recruit at least two reviewers; insert verified real courses/topics (no admin UI yet).
-4. **Google OAuth:** create the OAuth client, publish the consent screen, and test a real sign-in (see README).
-5. **Hosting:** HTTPS, `AUTH_SECRET`, `TRUST_PROXY`, backups + restore drill, cron for guest-session purge; consider a shared rate-limit store if running more than one process.
-6. **Hardening:** nonce-based CSP (currently allows inline scripts for Next.js), password re-confirmation on account deletion, pagination for large queues, manual accessibility audit with assistive tech, legal/privacy review of the policy pages.
-7. **Nice-to-have next:** Docker image, admin UI for courses, reviewer notes search, per-session "report from pinned version" linkage.
+- No manual screen-reader testing or 200–400% zoom; axe finds only a subset of WCAG issues.
+- **Google sign-in has not been exercised end to end** (only our side of the OAuth request). Demo mode uses password login as a substitute.
+- Email is only exercised through a capturing test provider; no real provider exists yet.
+- The e2e walkthrough moves a pickup window and runs the purge using the database directly, standing in for waiting days.
+- No load testing, no restore drill, and the cron jobs are documented but not set up anywhere.

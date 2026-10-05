@@ -78,12 +78,12 @@ export function VolunteerCard({ p }: { p: VolunteerPickup }) {
       ) : (
         <>
           <div className="actions">
-            {!p.arrivedAt && <ActionButton label="Arrived" className="btn big" action={() => api("POST", `/api/pickups/${p.pickupId}/arrive`)} />}
+            {p.status === "scheduled" && !p.arrivedAt && <ActionButton label="Arrived" className="btn big" action={() => api("POST", `/api/pickups/${p.pickupId}/arrive`)} />}
             {p.arrivedAt && !p.outcome && p.canCheckOut && <ActionButton label="Done (items collected)" className="btn big" action={() => api("POST", `/api/pickups/${p.pickupId}/complete`, { outcome: "collected" })} />}
             {p.canCheckOut && <button type="button" className="btn secondary big" aria-expanded={open === "couldnt"} onClick={() => setOpen(open === "couldnt" ? "" : "couldnt")}>Couldn’t complete</button>}
           </div>
           <p className="small muted" style={{ marginBottom: 0 }}>
-            {p.arrivedAt ? <>You arrived at {formatLocal(p.arrivedAt, p.timezone)}. {p.outcome === "collected" && "You checked out: waiting for your partner."}</> : p.canArrive ? "Tap Arrived when you are at the door together." : "You can tap Arrived from one hour before the window, once two volunteers are assigned."}
+            {p.status !== "scheduled" ? "Check-in opens once the pickup is scheduled with two volunteers." : p.arrivedAt ? <>You arrived at {formatLocal(p.arrivedAt, p.timezone)}. {p.outcome === "collected" && "You checked out: waiting for your partner."}</> : p.canArrive ? "Tap Arrived when you are at the door together." : "You can tap Arrived from one hour before the window, once two volunteers are assigned."}
           </p>
           {open === "couldnt" && <CouldNot p={p} />}
         </>

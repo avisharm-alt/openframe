@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Builds the app, starts it against a throwaway demo database, runs the HTTP walkthrough and the
-# browser/accessibility check, then stops the server. Exits non-zero on any failure.
+# Builds the app, starts it against a throwaway demo database (seeded with demo-mode data), runs the HTTP
+# walkthrough and the browser/accessibility check, then stops the server. Exits non-zero on any failure.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 PORT="${E2E_PORT:-3100}"
@@ -8,7 +8,8 @@ export DATABASE_PATH="${E2E_DB:-./data/e2e.db}"
 export OPENFRAME_DEMO=1 BASE_URL="http://localhost:$PORT" TRUST_PROXY=0
 export AUTH_SECRET="e2e-only-secret-e2e-only-secret-e2e-only-secret"
 export AUTH_SIGNUP_LIMIT_PER_HOUR=1000 AUTH_SIGNIN_LIMIT_PER_MINUTE=1000
-export INITIAL_MAINTAINER_EMAILS=bootstrap@example.test
+export INITIAL_ADMIN_EMAILS=bootstrap@example.test
+export PICKUP_ENCRYPTION_KEY="e2e-only-pickup-key-e2e-only-pickup-key-0123456789"
 if curl -sf "http://localhost:$PORT/" > /dev/null 2>&1; then echo "Port $PORT is already in use (stale server?). Stop it or set E2E_PORT." >&2; exit 1; fi
 rm -f "$DATABASE_PATH" "$DATABASE_PATH-wal" "$DATABASE_PATH-shm"
 npx tsx scripts/seed-demo.ts || exit 1

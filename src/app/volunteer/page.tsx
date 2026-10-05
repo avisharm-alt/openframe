@@ -30,7 +30,7 @@ export default async function VolunteerPage() {
     <div style={{ maxWidth: "40rem" }}>
       <h1>My pickups</h1>
       <p className="muted small">{memberships.map((m) => `${m.name} (${m.role})`).join(" · ")}</p>
-      {ack ? <p className="small muted">Safety rules acknowledged {formatLocal(ack, "America/Toronto")}. <Link href="/safety">Read them again</Link>.</p> : <SafetyGate />}
+      {ack ? <p className="small muted">Safety rules acknowledged {formatLocal(ack, "America/Toronto")}; <Link href="/safety">read them again</Link>.</p> : <SafetyGate />}
 
       <h2>Upcoming</h2>
       {upcoming.length === 0 ? <p className="empty">Nothing assigned to you right now.</p> : upcoming.map((p) => <VolunteerCard key={p.pickupId} p={p} />)}

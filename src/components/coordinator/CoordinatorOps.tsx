@@ -1,4 +1,5 @@
 "use client";
+import { ScrollTable } from "../ScrollTable";
 import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { formatLocal } from "@/lib/time";
@@ -115,7 +116,7 @@ export function PickupBoardView({ board, roster, tz }: { board: PickupBoard; ros
 export function DropoffsTable({ rows }: { rows: DropoffRow[] }) {
   if (rows.length === 0) return <p className="empty">No incoming drop-offs.</p>;
   return (
-    <div className="table-wrap">
+    <ScrollTable label="Incoming drop-offs by date and zone">
       <table className="compact">
         <caption className="sr-only">Incoming drop-offs by date and zone</caption>
         <thead><tr><th scope="col">Date</th><th scope="col">Zone</th><th scope="col">From</th><th scope="col">Items</th><th scope="col">Status</th><th scope="col">Actions</th></tr></thead>
@@ -135,7 +136,7 @@ export function DropoffsTable({ rows }: { rows: DropoffRow[] }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollTable>
   );
 }
 

@@ -221,3 +221,11 @@ describe("clock", () => {
     expect(code(() => w.pickupPledge())).toBe("invalid"); // the Nov windows are now in the past
   });
 });
+
+describe("receiving a pledge twice or too early", () => {
+  it("says the status does not allow it, before looking at the counts", () => {
+    const id = w.pickupPledge();
+    const line = getMyPledge(w.donor, id).items[0];
+    expect(code(() => receivePledge(w.lonCoord, id, { lines: [{ lineId: line.lineId, quantity: 1 }] }))).toBe("invalid_transition"); // not collected yet
+  });
+});

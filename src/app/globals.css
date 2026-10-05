@@ -116,7 +116,7 @@ legend { font-weight: 600; padding: 0 0.4rem; }
 table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
 th, td { text-align: left; padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--border); vertical-align: top; }
 th { background: var(--surface-2); font-weight: 600; }
-.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+.table-wrap { position: relative; overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
 .table-wrap table tr:last-child td, .table-wrap table tr:last-child th { border-bottom: none; }
 dialog { border: 1px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--text); max-width: 30rem; width: calc(100% - 2rem); padding: 1.2rem; box-shadow: 0 8px 24px rgba(1, 4, 9, 0.35); }
 dialog::backdrop { background: rgba(1, 4, 9, 0.5); }

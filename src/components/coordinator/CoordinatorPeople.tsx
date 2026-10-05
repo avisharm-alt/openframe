@@ -1,4 +1,5 @@
 "use client";
+import { ScrollTable } from "../ScrollTable";
 import { api } from "@/lib/api-client";
 import { formatLocal } from "@/lib/time";
 import { CONCERN_LABELS, REPORT_STATES } from "@/lib/types";
@@ -22,7 +23,8 @@ export function PeopleTab({ slug, members, isAdmin }: { slug: string; members: M
           { name: "role", label: "Role", type: "select", options: isAdmin ? [["volunteer", "Volunteer"], ["coordinator", "Coordinator"]] : [["volunteer", "Volunteer"]] },
         ]}
       />
-      <div className="table-wrap" style={{ marginTop: "1rem" }}>
+      <div style={{ marginTop: "1rem" }}>
+      <ScrollTable label="Chapter members">
         <table className="compact">
           <caption className="sr-only">Chapter members</caption>
           <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Safety rules</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
@@ -36,6 +38,7 @@ export function PeopleTab({ slug, members, isAdmin }: { slug: string; members: M
             ))}
           </tbody>
         </table>
+      </ScrollTable>
       </div>
     </>
   );
@@ -134,7 +137,7 @@ export function ReportsTab({ reports }: { reports: ConcernRow[] }) {
 
 export function AuditTable({ events, tz }: { events: AuditRow[]; tz: string }) {
   return (
-    <div className="table-wrap">
+    <ScrollTable label="Audit log">
       <table className="compact">
         <caption className="sr-only">Audit log</caption>
         <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">Action</th><th scope="col">Subject</th><th scope="col">Detail</th></tr></thead>
@@ -148,6 +151,6 @@ export function AuditTable({ events, tz }: { events: AuditRow[]; tz: string }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollTable>
   );
 }

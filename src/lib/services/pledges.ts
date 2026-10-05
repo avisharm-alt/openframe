@@ -293,6 +293,9 @@ export function receivePledge(actor: Actor, pledgeId: string, raw: unknown) {
   const p = loadPledge(pledgeId);
   requireCoordinator(actor, p.chapter_id);
   const input = receiveSchema.parse(raw);
+  if (!canTransition(p.method, p.status, "received")) {
+    throw conflict("invalid_transition", `A ${p.method === "pickup" ? "pickup" : "drop-off"} pledge that is “${p.status}” cannot be counted into stock.`);
+  }
   const db = getDb();
   const lines = pledgeLines(pledgeId);
   const given = new Map(input.lines.map((l) => [l.lineId, l.quantity]));
