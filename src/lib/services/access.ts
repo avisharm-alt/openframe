@@ -57,3 +57,40 @@ export function listMemberships(userId: string): Membership[] {
     )
     .all(userId) as Membership[];
 }
+
+// ---- partners: the agency_worker role is scoped to one partner --------------------------------------------------------
+
+export type PartnerRef = { id: string; chapterId: string; name: string; status: "pending" | "approved" | "suspended"; active: boolean };
+export function getPartnerRef(id: string): PartnerRef {
+  const r = getDb().prepare("SELECT id, chapter_id AS chapterId, name, status, active FROM partner WHERE id = ?").get(id) as (Omit<PartnerRef, "active"> & { active: number }) | undefined;
+  if (!r) throw notFound("Partner not found");
+  return { ...r, active: !!r.active };
+}
+
+/** An approved agency worker of an approved, active partner. Pending workers have no access. */
+export function isAgencyWorkerOf(actor: Actor, partnerId: string): boolean {
+  const r = getDb()
+    .prepare(
+      `SELECT 1 FROM partner_member m JOIN partner p ON p.id = m.partner_id
+        WHERE m.partner_id = ? AND m.user_id = ? AND m.status = 'approved' AND p.status = 'approved' AND p.active = 1`,
+    )
+    .get(partnerId, actor.id);
+  return !!r;
+}
+export function requireAgencyWorker(actor: Actor, partnerId: string) {
+  if (!isAgencyWorkerOf(actor, partnerId)) throw forbidden("Agency worker access for this partner is required.");
+}
+/** Workers of the partner, or coordinators of the partner's chapter (and admins). */
+export function canActForPartner(actor: Actor, partnerId: string): boolean {
+  return isAgencyWorkerOf(actor, partnerId) || isCoordinatorOf(actor, getPartnerRef(partnerId).chapterId);
+}
+
+export type PartnerMembership = { partnerId: string; name: string; chapterSlug: string; status: "pending" | "approved"; partnerStatus: string };
+export function listPartnerMemberships(userId: string): PartnerMembership[] {
+  return getDb()
+    .prepare(
+      `SELECT p.id AS partnerId, p.name, c.slug AS chapterSlug, m.status, p.status AS partnerStatus
+         FROM partner_member m JOIN partner p ON p.id = m.partner_id JOIN chapter c ON c.id = p.chapter_id WHERE m.user_id = ? ORDER BY p.name`,
+    )
+    .all(userId) as PartnerMembership[];
+}

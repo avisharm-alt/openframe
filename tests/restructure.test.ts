@@ -21,7 +21,7 @@ describe("migration 006: restructure from the question bank", () => {
     db.prepare("INSERT INTO course (id,university_id,slug,code,title,subject,created_at) VALUES ('c','u','s','C','T','S','t')").run();
     db.prepare("INSERT INTO moderation_event (id,actor_id,action,question_id,detail,created_at) VALUES ('e','m','withdraw','q','{}','t')").run();
 
-    expect(migrate(db)).toEqual(["006_restructure.sql", "007_care_network.sql", "008_seed_reference.sql"]);
+    expect(migrate(db)).toEqual(["006_restructure.sql", "007_care_network.sql", "008_seed_reference.sql", "009_partners_requests.sql", "010_seed_requests.sql"]);
 
     const roles = Object.fromEntries((db.prepare('SELECT id, role FROM "user"').all() as { id: string; role: string }[]).map((r) => [r.id, r.role]));
     expect(roles).toEqual({ m: "admin", r: "member", s: "member" });

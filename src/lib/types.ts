@@ -8,35 +8,61 @@ export type Actor = { id: string; role: Role; name?: string };
 
 export const isAdmin = (a: Actor | null | undefined): boolean => !!a && a.role === "admin";
 
-export const ITEM_CATEGORIES = ["hygiene", "clothing", "winter_gear", "menstrual", "first_aid", "snacks_sealed", "other"] as const;
+export const ITEM_CATEGORIES = ["clothing", "footwear", "winter_gear", "hygiene", "menstrual", "first_aid", "electronics", "bags", "snacks_sealed", "other"] as const;
 export type ItemCategory = (typeof ITEM_CATEGORIES)[number];
 export const CATEGORY_LABELS: Record<ItemCategory, string> = {
-  hygiene: "Hygiene",
   clothing: "Clothing",
+  footwear: "Footwear",
   winter_gear: "Winter gear",
+  hygiene: "Hygiene",
   menstrual: "Menstrual",
   first_aid: "First aid",
+  electronics: "Electronics (chargers)",
+  bags: "Bags",
   snacks_sealed: "Snacks (sealed)",
   other: "Other",
 };
 
-export const NEED_PRIORITIES = ["low", "normal", "high", "urgent"] as const;
-export type NeedPriority = (typeof NEED_PRIORITIES)[number];
-export const PRIORITY_RANK: Record<NeedPriority, number> = { low: 0, normal: 1, high: 2, urgent: 3 };
-export const NEED_STATUSES = ["open", "met", "closed"] as const;
+export const SIZE_SCHEMES = ["none", "shoe", "letter", "numeric"] as const;
+export type SizeScheme = (typeof SIZE_SCHEMES)[number];
+export const SIZES: Record<SizeScheme, string[]> = {
+  none: [],
+  shoe: ["5", "6", "7", "8", "9", "10", "11", "12", "13", "14"],
+  letter: ["XS", "S", "M", "L", "XL", "XXL"],
+  numeric: ["0", "2", "4", "6", "8", "10", "12", "14", "16", "18", "20"],
+};
 
-export const PLEDGE_METHODS = ["pickup", "dropoff"] as const;
-export type PledgeMethod = (typeof PLEDGE_METHODS)[number];
-export const PLEDGE_STATUSES = ["pledged", "scheduled", "collected", "received", "cancelled", "no_show"] as const;
-export type PledgeStatus = (typeof PLEDGE_STATUSES)[number];
-export const PLEDGE_STATUS_LABELS: Record<PledgeStatus, string> = {
-  pledged: "Pledged",
+export const URGENCIES = ["normal", "urgent"] as const;
+export type Urgency = (typeof URGENCIES)[number];
+export const REQUEST_TYPES = ["item", "kit", "restock"] as const;
+export type RequestType = (typeof REQUEST_TYPES)[number];
+export const REQUEST_STATUSES = ["open", "claimed", "in_transit", "delivered", "confirmed", "expired", "cancelled"] as const;
+export type RequestStatus = (typeof REQUEST_STATUSES)[number];
+export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
+  open: "Open",
+  claimed: "Claimed",
+  in_transit: "On its way",
+  delivered: "Delivered",
+  confirmed: "Confirmed by the agency",
+  expired: "Expired",
+  cancelled: "Cancelled",
+};
+
+export const CLAIM_METHODS = ["pickup", "dropoff"] as const;
+export type ClaimMethod = (typeof CLAIM_METHODS)[number];
+export const CLAIM_STATUSES = ["claimed", "scheduled", "collected", "received", "cancelled", "no_show"] as const;
+export type ClaimStatus = (typeof CLAIM_STATUSES)[number];
+export const CLAIM_STATUS_LABELS: Record<ClaimStatus, string> = {
+  claimed: "Claimed",
   scheduled: "Scheduled",
   collected: "Collected",
   received: "Received",
   cancelled: "Cancelled",
   no_show: "No-show",
 };
+
+export const LEDGER_KINDS = ["received", "allocated_to_request", "assembled_into_kit", "adjusted", "discarded"] as const;
+export type LedgerKind = (typeof LEDGER_KINDS)[number];
 
 export const OUTCOME_REASONS = ["nobody_home", "volunteer_unavailable", "safety_concern", "other"] as const;
 export type OutcomeReason = (typeof OUTCOME_REASONS)[number];

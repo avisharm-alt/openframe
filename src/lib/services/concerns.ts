@@ -5,43 +5,43 @@ import { concernSchema, concernUpdateSchema } from "../validation";
 import type { Actor, ConcernCategory } from "../types";
 import { logAudit } from "./audit";
 import { requireCoordinator } from "./access";
-import { loadPledge } from "./pledges";
+import { loadClaim } from "./claims";
 
 const PRIORITY: Record<ConcernCategory, number> = { safety: 2, conduct: 1, no_show: 0, other: 0 };
 
 /** Inserts a concern. Used by fileConcern and, for safety concerns raised at check-out, by pickups.ts. */
-export function insertConcern(e: { chapterId: string; pledgeId: string | null; reporterId: string | null; reporterRole: "donor" | "volunteer"; category: ConcernCategory; details: string }) {
+export function insertConcern(e: { chapterId: string; claimId: string | null; reporterId: string | null; reporterRole: "neighbour" | "volunteer"; category: ConcernCategory; details: string }) {
   const id = uid();
   getDb()
-    .prepare("INSERT INTO concern_report (id, chapter_id, pledge_id, reporter_id, reporter_role, category, details, priority, state, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,'open',?,?)")
-    .run(id, e.chapterId, e.pledgeId, e.reporterId, e.reporterRole, e.category, e.details, PRIORITY[e.category], now(), now());
+    .prepare("INSERT INTO concern_report (id, chapter_id, claim_id, reporter_id, reporter_role, category, details, priority, state, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,'open',?,?)")
+    .run(id, e.chapterId, e.claimId, e.reporterId, e.reporterRole, e.category, e.details, PRIORITY[e.category], now(), now());
   logAudit(e.reporterId, "concern_filed", { chapterId: e.chapterId, subjectType: "concern", subjectId: id, detail: { category: e.category, by: e.reporterRole } });
   return id;
 }
 
 /**
- * A donor can report a concern about the volunteers on their pickup, and an assigned volunteer can report a concern
- * about the donor. Reports go to the chapter's coordinator queue. Nobody else can report on a pledge.
+ * A neighbour can report a concern about the volunteers on their pickup, and an assigned volunteer can report a concern
+ * about the neighbour. Reports go to the chapter's coordinator queue. Nobody else can report on a claim.
  */
 export function fileConcern(actor: Actor, raw: unknown): { id: string } {
   rateLimit(`concern:${actor.id}`, 5, 3600_000);
   const input = concernSchema.parse(raw);
-  const p = loadPledge(input.pledgeId);
+  const p = loadClaim(input.claimId);
   const db = getDb();
-  const pk = db.prepare("SELECT id FROM pickup WHERE pledge_id = ?").get(p.id) as { id: string } | undefined;
-  let role: "donor" | "volunteer" | null = null;
-  if (pk && p.donor_id === actor.id) role = "donor";
+  const pk = db.prepare("SELECT id FROM pickup WHERE claim_id = ?").get(p.id) as { id: string } | undefined;
+  let role: "neighbour" | "volunteer" | null = null;
+  if (pk && p.neighbour_id === actor.id) role = "neighbour";
   else if (pk && db.prepare("SELECT 1 FROM pickup_assignment WHERE pickup_id = ? AND volunteer_id = ?").get(pk.id, actor.id)) role = "volunteer";
-  if (!role) throw notFound("Pledge not found");
-  if (role === "donor" && p.status === "pledged" && !db.prepare("SELECT 1 FROM pickup_assignment WHERE pickup_id = ?").get(pk!.id)) {
+  if (!role) throw notFound("Claim not found");
+  if (role === "neighbour" && p.status === "claimed" && !db.prepare("SELECT 1 FROM pickup_assignment WHERE pickup_id = ?").get(pk!.id)) {
     throw conflict("no_volunteers_yet", "No volunteers have been assigned to this pickup yet.");
   }
-  return { id: insertConcern({ chapterId: p.chapter_id, pledgeId: p.id, reporterId: actor.id, reporterRole: role, category: input.category, details: input.details }) };
+  return { id: insertConcern({ chapterId: p.chapter_id, claimId: p.id, reporterId: actor.id, reporterRole: role, category: input.category, details: input.details }) };
 }
 
 export type ConcernRow = {
-  id: string; pledgeId: string | null; reporterRole: "donor" | "volunteer"; category: ConcernCategory; details: string; priority: number;
-  state: string; resolutionNote: string | null; createdAt: string; donorName: string | null; volunteers: string[];
+  id: string; claimId: string | null; reporterRole: "neighbour" | "volunteer"; category: ConcernCategory; details: string; priority: number;
+  state: string; resolutionNote: string | null; createdAt: string; neighbourName: string | null; volunteers: string[];
 };
 
 /** The coordinator queue: safety concerns first, then newest. */
@@ -50,16 +50,16 @@ export function listConcerns(actor: Actor, chapterId: string, state?: string): C
   const db = getDb();
   const rows = db
     .prepare(
-      `SELECT c.id, c.pledge_id AS pledgeId, c.reporter_role AS reporterRole, c.category, c.details, c.priority, c.state, c.resolution_note AS resolutionNote,
-              c.created_at AS createdAt, u.name AS donorName
-         FROM concern_report c LEFT JOIN pledge p ON p.id = c.pledge_id LEFT JOIN "user" u ON u.id = p.donor_id
+      `SELECT c.id, c.claim_id AS claimId, c.reporter_role AS reporterRole, c.category, c.details, c.priority, c.state, c.resolution_note AS resolutionNote,
+              c.created_at AS createdAt, u.name AS neighbourName
+         FROM concern_report c LEFT JOIN claim p ON p.id = c.claim_id LEFT JOIN "user" u ON u.id = p.neighbour_id
         WHERE c.chapter_id = ? ${state ? "AND c.state = ?" : ""} ORDER BY (c.state IN ('open','investigating')) DESC, c.priority DESC, c.created_at DESC LIMIT 200`,
     )
     .all(...(state ? [chapterId, state] : [chapterId])) as Omit<ConcernRow, "volunteers">[];
   return rows.map((r) => ({
     ...r,
-    volunteers: r.pledgeId
-      ? (db.prepare("SELECT u.name FROM pickup_assignment a JOIN pickup k ON k.id = a.pickup_id JOIN \"user\" u ON u.id = a.volunteer_id WHERE k.pledge_id = ? ORDER BY a.assigned_at, a.rowid").all(r.pledgeId) as { name: string }[]).map((v) => v.name)
+    volunteers: r.claimId
+      ? (db.prepare("SELECT u.name FROM pickup_assignment a JOIN pickup k ON k.id = a.pickup_id JOIN \"user\" u ON u.id = a.volunteer_id WHERE k.claim_id = ? ORDER BY a.assigned_at, a.rowid").all(r.claimId) as { name: string }[]).map((v) => v.name)
       : [],
   }));
 }

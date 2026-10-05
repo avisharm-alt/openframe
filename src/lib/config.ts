@@ -89,6 +89,14 @@ export const config = {
   get pickupOverdueHours() {
     return num(process.env.PICKUP_OVERDUE_HOURS, 2);
   },
+  /** A pickup claim still waiting to be scheduled this many hours after it was made is released and its request reopens. */
+  get claimReleaseHours() {
+    return num(process.env.CLAIM_RELEASE_HOURS, 48);
+  },
+  /** A request still unfilled this many days before (or after) its needed-by date alerts coordinators. */
+  get requestRiskDays() {
+    return num(process.env.REQUEST_RISK_DAYS, 2);
+  },
   /** "console" (default) logs a one-line summary; "noop" is silent. Real providers: see src/lib/email.ts. */
   get emailProvider() {
     return (process.env.EMAIL_PROVIDER || "console").trim().toLowerCase();
