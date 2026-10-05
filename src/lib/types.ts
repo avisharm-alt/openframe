@@ -6,7 +6,7 @@ export type Role = "member" | "admin";
 export type ChapterRole = "volunteer" | "coordinator";
 export type Actor = { id: string; role: Role; name?: string };
 
-export const isAdmin = (a: Actor | null | undefined): a is Actor => !!a && a.role === "admin";
+export const isAdmin = (a: Actor | null | undefined): boolean => !!a && a.role === "admin";
 
 export const ITEM_CATEGORIES = ["hygiene", "clothing", "winter_gear", "menstrual", "first_aid", "snacks_sealed", "other"] as const;
 export type ItemCategory = (typeof ITEM_CATEGORIES)[number];
