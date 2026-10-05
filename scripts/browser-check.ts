@@ -1,6 +1,6 @@
 // Browser walkthrough + automated accessibility scan (axe-core) against a RUNNING demo server.
 //   BASE_URL=http://localhost:3100 tsx scripts/browser-check.ts [screenshotDir]
-// Drives the main flows with the KEYBOARD ONLY (guest, donor, volunteer, coordinator) at 1100px and 375px, runs axe
+// Drives the main flows with the KEYBOARD ONLY (guest, neighbour, agency worker, volunteer, coordinator) at 1100px and 375px, runs axe
 // (WCAG 2.0/2.1/2.2 A and AA tags) on every page and state it visits, and checks for horizontal page scroll.
 // It relies on the accounts created by `npm run db:seed-demo`.
 import { chromium, type Browser, type Page } from "playwright-core";
@@ -72,116 +72,183 @@ async function guestFlow(browser: Browser, width: number, height: number, label:
   const c = await newCtx(browser, width, height, label);
   const { page } = c;
   await page.goto(BASE + "/?chapter=london"); // the walkthrough adds a Kingston chapter that sorts first, so ask for London
-  log((await page.getByRole("heading", { level: 1 }).innerText()).includes("Care packages"), `[${label}] home leads with the purpose`);
-  log(await page.getByRole("heading", { name: /What we need right now in London/ }).isVisible(), `[${label}] home shows London's live needs board`);
-  log((await page.locator(".need-list > li").count()) > 0 && (await page.locator(".meter").count()) > 0, `[${label}] board lists needs with progress bars`);
-  const firstMeter = await page.locator(".meter").first().getAttribute("aria-label");
-  log(/\d+ of \d+ received, \d+ more pledged/.test(firstMeter ?? ""), `[${label}] progress is available as text (“${firstMeter}”)`);
+  log((await page.getByRole("heading", { level: 1 }).innerText()).includes("Specific things"), `[${label}] home leads with the purpose`);
+  log(await page.getByRole("heading", { name: /Requests in London/ }).isVisible(), `[${label}] home shows London's live request board`);
+  log((await page.locator(".need-list > li.req").count()) > 0, `[${label}] board lists request cards`);
+  log((await page.locator(".need-list .badge.urgent").count()) > 0, `[${label}] urgent requests carry a badge`);
+  log((await page.locator(".need-list > li.restock").count()) > 0 && (await page.getByText("Student team restock").count()) > 0, `[${label}] restock requests are visually distinct and labelled`);
+  const first = await page.locator(".need-list > li.req").first().innerText();
+  log(/needed by/.test(first) && /For .+, delivered to/.test(first), `[${label}] a card shows item, quantity, needed-by, partner and delivery site`);
   log((await page.getByText("What we can’t accept").count()) > 0 && (await page.getByText(/Medication of any kind/).count()) > 0, `[${label}] the new-items-only rules are on the page`);
   await axe(page, `[${label}] home (London)`);
   await shot(page, `${label}-home`);
   if (width <= 480) log(!(await overflow(page)), `[${label}] no horizontal page scroll: home`);
 
-  // Keyboard: skip link, then the chapter picker.
+  // Keyboard: skip link, then filter the board, then the chapter picker.
   await page.keyboard.press("Tab");
   log((await page.evaluate(() => document.activeElement?.textContent ?? "")).includes("Skip to main content"), `[${label}] first Tab stop is the skip link`);
+  await page.locator("#f-category").focus();
+  await page.keyboard.type("Footwear");
+  await page.locator("#f-category").evaluate((el) => (el as HTMLSelectElement).form!.querySelector<HTMLButtonElement>("button")!.focus());
+  await page.keyboard.press("Enter");
+  await page.waitForURL(/category=footwear/);
+  const filtered = await page.locator(".need-list > li.req").allInnerTexts();
+  log(filtered.length > 0 && filtered.every((t) => /boots|shoes|sneakers/i.test(t)), `[${label}] keyboard filter by category shows only footwear (${filtered.length})`);
+  await axe(page, `[${label}] home (filtered)`);
+  await page.goto(BASE + "/?chapter=london");
   await page.getByRole("link", { name: /Oshawa/ }).first().focus();
   await page.keyboard.press("Enter");
   await page.waitForURL(/chapter=oshawa/);
-  log(await page.getByRole("heading", { name: /What we need right now in Oshawa/ }).isVisible(), `[${label}] keyboard picks the Oshawa chapter and its own board`);
+  log(await page.getByRole("heading", { name: /Requests in Oshawa/ }).isVisible(), `[${label}] keyboard picks the Oshawa chapter and its own board`);
   await axe(page, `[${label}] home (Oshawa)`);
   await shot(page, `${label}-home-oshawa`);
 
-  await page.getByRole("link", { name: "Pledge items" }).focus();
+  await page.getByRole("link", { name: "Claim this" }).first().focus();
   await page.keyboard.press("Enter");
   await page.waitForURL(/\/auth\/sign-in\?next=/);
-  log(true, `[${label}] pledging sends a guest to sign in and remembers where they were going`);
+  log(true, `[${label}] claiming sends a guest to sign in and remembers where they were going`);
 
-  for (const p of ["/impact", "/about", "/guidelines", "/safety", "/privacy", "/auth/sign-in"]) await visit(c, p);
-  const bars = await (async () => { await page.goto(BASE + "/impact"); return page.locator(".bars li").count(); })();
-  log(bars >= 12, `[${label}] impact page shows weekly counts (${bars} rows)`);
+  for (const p of ["/impact", "/about", "/guidelines", "/safety", "/privacy", "/partner", "/auth/sign-in"]) await visit(c, p);
+  await page.goto(BASE + "/impact");
+  const median = await page.getByRole("heading", { name: /Median time from request to delivery/ }).count();
+  log(median > 0, `[${label}] impact page leads with the median time from request to delivery`);
+  log((await page.locator(".bars li").count()) >= 12, `[${label}] impact page shows weekly counts per chapter`);
   await page.goto(BASE + "/safety");
   const rules = await page.locator("ol > li").count();
-  log(rules >= 8 && (await page.getByText(/Always in pairs/).count()) > 0 && (await page.getByText(/Doorstep handoff/).count()) > 0, `[${label}] Safety page lists the volunteer rules (pairs, daytime, doorstep, emergency contact, reporting)`);
+  log(rules >= 8 && (await page.getByText(/Always in pairs/).count()) > 0 && (await page.getByText(/Never interact with recipients/).count()) > 0, `[${label}] Safety page lists the volunteer rules (pairs, daytime, doorstep, no recipient contact, reporting)`);
   log(c.errors.length === 0, `[${label}] guest: no console/page errors${c.errors.length ? ": " + c.errors.slice(0, 3).join(" | ") : ""}`);
   await c.close();
 }
 
-async function donorFlow(browser: Browser, width: number, height: number, label: string, email: string) {
+async function neighbourFlow(browser: Browser, width: number, height: number, label: string, email: string) {
   const c = await newCtx(browser, width, height, label);
   const { page } = c;
-  await signIn(c, email, "/pledge?chapter=london");
-  await page.waitForURL(/\/pledge/);
-  await page.getByRole("heading", { name: /Pledge items to London/ }).waitFor();
-  log(true, `[${label}] keyboard sign-in returns to the pledge form`);
-  log((await page.getByText(/Yes, please/).count()) > 0 && (await page.getByText(/Medication of any kind/).count()) > 0, `[${label}] accepted / not-accepted rules are shown inline on the pledge form`);
-  await axe(page, `[${label}] pledge form (drop-off)`);
-  await shot(page, `${label}-pledge`);
-  // Pickup variant: safety wording and private-address fields.
+  await page.goto(BASE + "/?chapter=london");
+  const href = await page.locator(".need-list > li.req:not(.restock) a.btn").first().getAttribute("href");
+  await signIn(c, email, href!);
+  await page.getByRole("heading", { name: "Claim a request" }).waitFor();
+  log(true, `[${label}] keyboard sign-in returns to the claim form`);
+  log((await page.getByText(/Yes, please/).count()) > 0 && (await page.getByText(/Medication of any kind/).count()) > 0, `[${label}] accepted / not-accepted rules are shown inline on the claim form`);
+  await axe(page, `[${label}] claim form (drop-off)`);
+  await shot(page, `${label}-claim`);
   await page.getByRole("radio", { name: /Pickup from my address/ }).focus();
   await page.keyboard.press("Space");
   log(await page.getByLabel(/Pickup address/).isVisible() && (await page.getByText(/two volunteers come together/i).count()) > 0, `[${label}] choosing pickup shows the address field and the safety promise`);
-  await axe(page, `[${label}] pledge form (pickup)`);
-  if (width <= 480) log(!(await overflow(page)), `[${label}] no horizontal page scroll: pledge form`);
-  await shot(page, `${label}-pledge-pickup`);
-  // Back to drop-off, fill it with the keyboard and submit.
+  log((await page.getByText(/scheduled within 48 hours/).count()) > 0, `[${label}] the 48-hour release rule is explained before claiming`);
+  await axe(page, `[${label}] claim form (pickup)`);
+  if (width <= 480) log(!(await overflow(page)), `[${label}] no horizontal page scroll: claim form`);
+  await shot(page, `${label}-claim-pickup`);
   await page.getByRole("radio", { name: /Drop off at a public zone/ }).focus();
   await page.keyboard.press("Space");
-  await page.locator('input[type="number"]').first().focus();
-  await page.keyboard.type("2");
-  const date = new Date(Date.now() + 3 * 86400_000).toISOString().slice(0, 10);
-  await page.getByLabel("Expected date").fill(date);
-  await page.getByRole("button", { name: "Confirm pledge" }).focus();
+  const date = new Date(Date.now() + 1 * 86400_000).toISOString().slice(0, 10);
+  await page.getByLabel(/Drop-off date/).fill(date);
+  await page.getByRole("button", { name: "Confirm claim" }).focus();
   await page.keyboard.press("Enter");
-  await page.waitForURL(/\/pledges\?new=1/);
-  await page.getByRole("heading", { name: "My pledges" }).waitFor();
-  log((await page.getByText(/Drop-off/).count()) > 0 && (await page.getByText(/Pledged/).count()) > 0, `[${label}] the pledge is created with the keyboard and listed as pledged`);
-  await axe(page, `[${label}] my pledges (new)`);
-  await shot(page, `${label}-my-pledges`);
-  log(c.errors.length === 0, `[${label}] donor: no console/page errors${c.errors.length ? ": " + c.errors.slice(0, 3).join(" | ") : ""}`);
+  await page.waitForURL(/\/claims\?new=1/);
+  await page.getByRole("heading", { name: "My claims" }).waitFor();
+  log((await page.getByText(/Drop-off/).count()) > 0 && (await page.getByText(/Claimed|Scheduled/).count()) > 0, `[${label}] the claim is created with the keyboard and listed in My claims`);
+  await axe(page, `[${label}] my claims (new)`);
+  await shot(page, `${label}-my-claims`);
+  log(c.errors.length === 0, `[${label}] neighbour: no console/page errors${c.errors.length ? ": " + c.errors.slice(0, 3).join(" | ") : ""}`);
   await c.close();
 }
 
-async function donorWithPickups(browser: Browser, width: number, height: number, label: string) {
+async function neighbourWithClaims(browser: Browser, width: number, height: number, label: string) {
   const c = await newCtx(browser, width, height, label);
   const { page } = c;
-  await signIn(c, "demo-donor-3@example.test", "/pledges");
-  await page.getByRole("heading", { name: "My pledges" }).waitFor();
-  log((await page.getByText("Scheduled").count()) > 0 && (await page.getByText("No-show").count()) > 0, `[${label}] a donor sees pledges in several states`);
-  await axe(page, `[${label}] my pledges (several states)`);
-  if (width <= 480) log(!(await overflow(page)), `[${label}] no horizontal page scroll: my pledges`);
-  // Reveal own pickup details with the keyboard: hidden until asked.
-  log((await page.getByText(/Demo Street/).count()) === 0, `[${label}] address is not in the page until the donor asks`);
+  await signIn(c, "demo-neighbour-3@example.test", "/claims");
+  await page.getByRole("heading", { name: "My claims" }).waitFor();
+  log((await page.getByText("Scheduled").count()) > 0 && (await page.getByText("No-show").count()) > 0, `[${label}] a neighbour sees claims in several states`);
+  await axe(page, `[${label}] my claims (several states)`);
+  if (width <= 480) log(!(await overflow(page)), `[${label}] no horizontal page scroll: my claims`);
+  log((await page.getByText(/Demo Street/).count()) === 0, `[${label}] address is not in the page until the neighbour asks`);
   await page.getByRole("button", { name: "Show my pickup details" }).first().focus();
   await page.keyboard.press("Enter");
   await page.getByText(/Demo Street/).first().waitFor();
-  log(true, `[${label}] keyboard reveals the donor's own address`);
-  await axe(page, `[${label}] my pledges (details shown)`);
+  log(true, `[${label}] keyboard reveals the neighbour's own address`);
+  await axe(page, `[${label}] my claims (details shown)`);
   await page.getByRole("button", { name: "Reschedule" }).first().focus();
   await page.keyboard.press("Enter");
-  await axe(page, `[${label}] my pledges (reschedule open)`);
-  await shot(page, `${label}-pledges-states`);
-  log(c.errors.length === 0, `[${label}] donor pledges: no console/page errors${c.errors.length ? ": " + c.errors.slice(0, 3).join(" | ") : ""}`);
+  await axe(page, `[${label}] my claims (reschedule open)`);
+  await shot(page, `${label}-claims-states`);
   await c.close();
+
+  const d = await newCtx(browser, width, height, label);
+  await signIn(d, "demo-neighbour-2@example.test", "/claims");
+  await d.page.getByRole("heading", { name: "My claims" }).waitFor();
+  log((await d.page.getByText(/Delivered to Ark Aid Street Mission \(demo\)/).count()) > 0, `[${label}] a delivered claim says “Delivered to [partner] on [date]”`);
+  await axe(d.page, `[${label}] my claims (delivered)`);
+  log(d.errors.length === 0 && c.errors.length === 0, `[${label}] neighbour claims: no console/page errors`);
+  await d.close();
+}
+
+async function workerFlow(browser: Browser, width: number, height: number, label: string) {
+  const c = await newCtx(browser, width, height, label);
+  const { page } = c;
+  await signIn(c, "demo-london-worker@example.test", "/partner");
+  await page.getByRole("heading", { name: /Ark Aid Street Mission/ }).waitFor();
+  log(await page.getByRole("heading", { name: "Post a request" }).isVisible(), `[${label}] an agency worker lands on their partner's page`);
+  log((await page.getByRole("button", { name: "Repeat my last request" }).count()) > 0 && (await page.getByText(/Winter boots|winter boots/).count()) > 0, `[${label}] repeat-last-request and favourites are one tap away`);
+  log((await page.getByText(/Describe the item, never the person/).count()) > 0, `[${label}] the form warns against identifying anyone`);
+  await axe(page, `[${label}] partner portal`);
+  if (width <= 480) {
+    log(!(await overflow(page)), `[${label}] no horizontal page scroll: partner portal`);
+    const small = await page.locator("form .btn, .quick .btn").evaluateAll((els) => els.filter((e) => (e as HTMLElement).getBoundingClientRect().height < 36).length);
+    log(small === 0, `[${label}] partner buttons are large enough to tap (${small} smaller than 36px)`);
+  }
+  // Post a request with the keyboard only.
+  await page.locator("#r-item").focus();
+  await page.keyboard.type("Sweatshirt");
+  await page.locator("#r-size").focus();
+  await page.keyboard.type("M");
+  await page.locator("#r-qty").focus();
+  await page.keyboard.press("Control+A");
+  await page.keyboard.type("3");
+  await page.getByRole("button", { name: "In 3 days" }).focus();
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Post request" }).focus();
+  await page.keyboard.press("Enter");
+  await page.getByText(/Request posted|posted/i).first().waitFor();
+  log(true, `[${label}] a request is posted with the keyboard in a few keystrokes`);
+  await axe(page, `[${label}] partner portal (after posting)`);
+  await shot(page, `${label}-partner`);
+  if (label === "desktop") { // the demo data has one delivered request waiting for confirmation, so only confirm it once
+    const confirmBtn = page.getByRole("button", { name: "Confirm we received it" }).first();
+    log((await confirmBtn.count()) > 0, `[${label}] a delivered request offers “Confirm we received it”`);
+    await confirmBtn.focus();
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => !document.body.innerText.includes("Working…"));
+    log(true, `[${label}] keyboard confirms receipt`);
+  }
+  log(c.errors.length === 0, `[${label}] worker: no console/page errors${c.errors.length ? ": " + c.errors.slice(0, 3).join(" | ") : ""}`);
+  await c.close();
+
+  const p = await newCtx(browser, width, height, label);
+  await signIn(p, "demo-pending-worker@example.test", "/partner");
+  await p.page.getByRole("heading", { name: "For partners" }).waitFor();
+  log((await p.page.getByText(/Waiting for a coordinator to approve/).count()) > 0 && (await p.page.getByRole("button", { name: "Post request" }).count()) === 0, `[${label}] a worker waiting for approval cannot post`);
+  await axe(p.page, `[${label}] partner page (pending worker)`);
+  await p.close();
 }
 
 async function volunteerFlow(browser: Browser, width: number, height: number, label: string) {
   const c = await newCtx(browser, width, height, label);
   const { page } = c;
   await signIn(c, "demo-london-volunteer-1@example.test", "/volunteer");
-  await page.getByRole("heading", { name: "My pickups" }).waitFor();
-  log((await page.getByText("Upcoming").count()) > 0 && (await page.locator(".vcard").count()) >= 2, `[${label}] volunteer sees upcoming pickups`);
+  await page.getByRole("heading", { name: "My shifts and pickups" }).waitFor();
+  log((await page.getByRole("heading", { name: "My shifts" }).count()) > 0 && (await page.getByText(/Tuesday evening run/).count()) > 0, `[${label}] volunteer sees their weekly shifts`);
+  log((await page.locator(".vcard").count()) >= 2, `[${label}] volunteer sees pickups and a delivery run`);
+  log((await page.getByRole("heading", { name: "My delivery runs" }).count()) > 0 && (await page.getByText(/Mon–Fri|Daily 10:00–14:00/).count()) > 0, `[${label}] the delivery batch shows the site's receiving hours`);
+  log((await page.getByRole("button", { name: "Start delivery" }).count()) > 0, `[${label}] a planned delivery can be started`);
   const html = await page.content();
   log(!/Demo Street/.test(html), `[${label}] no address is in the volunteer page until it is revealed`);
   log((await page.getByText(/The address appears here from|shown once the pickup is scheduled/).count()) > 0, `[${label}] a pickup outside the window explains when its address will appear`);
-  log((await page.getByText(/Available slots/).count()) > 0, `[${label}] available slots are listed`);
   await axe(page, `[${label}] volunteer view`);
   if (width <= 480) {
     log(!(await overflow(page)), `[${label}] no horizontal page scroll: volunteer view`);
     const small = await page.locator(".vcard .btn").evaluateAll((els) => els.filter((e) => (e as HTMLElement).getBoundingClientRect().height < 40).length);
     log(small === 0, `[${label}] volunteer buttons are large enough to tap (${small} smaller than 40px)`);
   }
-  // The pickup whose window is today: reveal the address with the keyboard, then check-in controls.
   const reveal = page.getByRole("button", { name: "Show address" }).first();
   log((await reveal.count()) > 0, `[${label}] the pickup within its window offers “Show address”`);
   await reveal.focus();
@@ -200,7 +267,7 @@ async function volunteerFlow(browser: Browser, width: number, height: number, la
 
   const c2 = await newCtx(browser, width, height, label);
   await signIn(c2, "demo-new-volunteer@example.test", "/volunteer");
-  await c2.page.getByRole("heading", { name: "My pickups" }).waitFor();
+  await c2.page.getByRole("heading", { name: "My shifts and pickups" }).waitFor();
   log((await c2.page.getByText(/read and acknowledge the Safety rules/).count()) > 0, `[${label}] a volunteer who has not acknowledged the Safety rules is gated`);
   await axe(c2.page, `[${label}] volunteer view (safety gate)`);
   await c2.page.goto(BASE + "/safety");
@@ -215,19 +282,27 @@ async function coordinatorFlow(browser: Browser, width: number, height: number, 
   await signIn(c, "demo-london-coordinator@example.test", "/coordinate");
   await page.getByRole("heading", { name: /London/ }).first().waitFor();
   log(page.url().includes("/coordinate/london"), `[${label}] a coordinator of one chapter lands on their dashboard`);
-  for (const tab of ["needs", "templates", "dropoffs", "pickups", "receive", "inventory", "packages", "people", "zones", "partners", "reports", "audit"]) {
+  for (const tab of ["requests", "pickups", "dropoffs", "receive", "deliveries", "stock", "kits", "approvals", "partners", "people", "shifts", "zones", "reports", "audit"]) {
     await visit(c, `/coordinate/london?tab=${tab}`, `coordinator dashboard: ${tab}`);
   }
+  await page.goto(`${BASE}/coordinate/london?tab=requests`);
+  log((await page.getByRole("button", { name: /Fill from stock/ }).count()) > 0, `[${label}] open requests offer “Fill from stock”`);
+  log((await page.locator(".card-sm.overdue").count()) > 0 && (await page.getByText(/At risk|Overdue by/).count()) > 0, `[${label}] requests at risk of missing their needed-by date are highlighted`);
+  await shot(page, `${label}-coordinator-requests`);
   await page.goto(`${BASE}/coordinate/london?tab=pickups`);
   const counts = await Promise.all(["Overdue", "Today", "Unassigned", "Scheduled"].map(async (h) => (await page.getByRole("heading", { name: new RegExp(`^${h}`) }).count()) > 0));
   log(counts.every(Boolean), `[${label}] pickup board has unassigned / scheduled / today / overdue sections`);
-  log((await page.getByText("Overdue", { exact: true }).count()) > 0, `[${label}] an overdue pickup is flagged`);
   log(!/Demo Street/.test(await page.content()), `[${label}] pickup board never includes an address`);
   await shot(page, `${label}-coordinator-pickups`);
-  await page.goto(`${BASE}/coordinate/london?tab=packages`);
-  log((await page.getByText(/can assemble \d+ now|cannot be assembled yet/).count()) > 0, `[${label}] packages tab shows which templates can be assembled`);
-  await shot(page, `${label}-coordinator-packages`);
-  // Cross-chapter: the London coordinator gets nothing for Oshawa.
+  await page.goto(`${BASE}/coordinate/london?tab=stock`);
+  log((await page.getByText(/below target/).count()) > 0, `[${label}] stock tab shows items below their restock target`);
+  await page.goto(`${BASE}/coordinate/london?tab=approvals`);
+  log((await page.getByText("Demo Pending Worker").count()) > 0 && (await page.getByText(/Eastside Food Bank/).count()) > 0, `[${label}] approvals list the pending worker and the unverified partner`);
+  await shot(page, `${label}-coordinator-approvals`);
+  await page.goto(`${BASE}/coordinate/london?tab=shifts`);
+  log((await page.getByText(/Needs \d+ more|Covered/).count()) > 0, `[${label}] shifts tab shows coverage gaps`);
+  await page.goto(`${BASE}/coordinate/london?tab=kits`);
+  log((await page.getByText(/assembled/).count()) > 0, `[${label}] kits tab shows kit templates and assembled kits`);
   await page.goto(`${BASE}/coordinate/oshawa`);
   log((await page.getByText(/not found|404/i).count()) > 0, `[${label}] a London coordinator cannot open Oshawa's dashboard`);
   log(c.errors.length === 0, `[${label}] coordinator: no console/page errors${c.errors.length ? ": " + c.errors.slice(0, 3).join(" | ") : ""}`);
@@ -242,15 +317,23 @@ async function coordinatorFlow(browser: Browser, width: number, height: number, 
 
 async function darkPass(browser: Browser) {
   const c = await newCtx(browser, 1100, 900, "dark", "dark");
-  for (const p of ["/?chapter=london", "/impact", "/safety", "/pledge?chapter=london", "/auth/sign-in"]) await visit(c, p);
+  for (const p of ["/?chapter=london", "/impact", "/safety", "/partner", "/auth/sign-in"]) await visit(c, p);
   await signIn(c, "demo-london-volunteer-1@example.test", "/volunteer");
   await visit(c, "/volunteer", "volunteer");
   await c.page.getByRole("button", { name: "Show address" }).first().click();
   await axe(c.page, "[dark] volunteer view (address shown)");
   await c.close();
+  const w = await newCtx(browser, 1100, 900, "dark", "dark");
+  await signIn(w, "demo-london-worker@example.test", "/partner");
+  await visit(w, "/partner", "partner portal");
+  await w.close();
+  const n = await newCtx(browser, 1100, 900, "dark", "dark");
+  await signIn(n, "demo-neighbour-3@example.test", "/claims");
+  await visit(n, "/claims", "my claims");
+  await n.close();
   const k = await newCtx(browser, 1100, 900, "dark", "dark");
   await signIn(k, "demo-london-coordinator@example.test", "/coordinate/london?tab=pickups");
-  for (const tab of ["pickups", "packages", "needs"]) await visit(k, `/coordinate/london?tab=${tab}`, `coordinator ${tab}`);
+  for (const tab of ["requests", "pickups", "stock", "approvals"]) await visit(k, `/coordinate/london?tab=${tab}`, `coordinator ${tab}`);
   await k.close();
 }
 
@@ -274,8 +357,9 @@ async function prodStyleSignIn(browser: Browser) {
   await prodStyleSignIn(browser);
   for (const [w, h, label] of [[1100, 900, "desktop"], [375, 760, "mobile"]] as const) {
     await guestFlow(browser, w, h, label);
-    await donorFlow(browser, w, h, label, `demo-new-donor@example.test`);
-    await donorWithPickups(browser, w, h, label);
+    await neighbourFlow(browser, w, h, label, `demo-new-neighbour@example.test`);
+    await neighbourWithClaims(browser, w, h, label);
+    await workerFlow(browser, w, h, label);
     await volunteerFlow(browser, w, h, label);
     await coordinatorFlow(browser, w, h, label);
   }
