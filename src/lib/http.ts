@@ -6,7 +6,7 @@ import { config } from "./config";
 import { ServiceError, forbidden } from "./errors";
 import { getAuth } from "./auth";
 import { getDb } from "./db";
-import { isReviewer, type Actor, type Role } from "./types";
+import { isAdmin, type Actor, type Role } from "./types";
 
 export async function getActor(headers: Headers): Promise<Actor | null> {
   const s = await getAuth().api.getSession({ headers });
@@ -15,7 +15,7 @@ export async function getActor(headers: Headers): Promise<Actor | null> {
     | { id: string; name: string; role: string | null }
     | undefined;
   if (!row) return null;
-  const role = (["student", "reviewer", "maintainer"].includes(row.role ?? "") ? row.role : "student") as Role;
+  const role = (row.role === "admin" ? "admin" : "member") as Role;
   return { id: row.id, name: row.name, role };
 }
 
@@ -51,7 +51,7 @@ export function errorResponse(e: unknown) {
   return NextResponse.json({ error: { code: "internal", message: "Something went wrong." } }, { status: 500 });
 }
 
-type Level = "none" | "user" | "reviewer";
+type Level = "none" | "user" | "admin";
 type Opts = { body?: boolean };
 type Ctx<P, A> = { req: Request; actor: A; params: P; body: unknown };
 
@@ -62,7 +62,7 @@ function build<P, A extends Actor | null>(level: Level, opts: Opts, fn: (ctx: Ct
       if (bad) return NextResponse.json({ error: { code: bad.code, message: bad.message } }, { status: bad.status });
       const actor = await getActor(req.headers);
       if (level !== "none" && !actor) throw new ServiceError(401, "unauthenticated", "Please sign in to continue.");
-      if (level === "reviewer" && !isReviewer(actor)) throw forbidden("Reviewer access required.");
+      if (level === "admin" && !isAdmin(actor)) throw forbidden("Admin access required.");
       let body: unknown = undefined;
       if (opts.body) {
         const text = await req.text();
@@ -88,6 +88,9 @@ export const publicRoute = <P = Record<string, string>>(opts: Opts, fn: (ctx: Ct
 /** Requires a signed-in user. */
 export const userRoute = <P = Record<string, string>>(opts: Opts, fn: (ctx: Ctx<P, Actor>) => Promise<unknown> | unknown) =>
   build<P, Actor>("user", opts, fn);
-/** Requires reviewer or maintainer role (enforced server-side on every call). */
-export const reviewerRoute = <P = Record<string, string>>(opts: Opts, fn: (ctx: Ctx<P, Actor>) => Promise<unknown> | unknown) =>
-  build<P, Actor>("reviewer", opts, fn);
+/**
+ * Requires the global admin role. Chapter-level permissions (coordinator, volunteer) depend on the chapter
+ * in the request, so they are checked inside the services with services/access.ts, not here.
+ */
+export const adminRoute = <P = Record<string, string>>(opts: Opts, fn: (ctx: Ctx<P, Actor>) => Promise<unknown> | unknown) =>
+  build<P, Actor>("admin", opts, fn);

@@ -2,8 +2,7 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV !== "production";
 
-// Remote images and frames are blocked at the browser level as defence in depth;
-// contributed Markdown also cannot render images or raw HTML (see src/components/Markdown.tsx).
+// Remote images and frames are blocked at the browser level as defence in depth.
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
@@ -20,8 +19,6 @@ const csp = [
 const nextConfig: NextConfig = {
   serverExternalPackages: ["better-sqlite3"],
   poweredByHeader: false,
-  // Allow a 10 MB file plus multipart metadata; the notes route enforces its own streamed cap.
-  experimental: { proxyClientMaxBodySize: 11 * 1024 * 1024 },
   async headers() {
     return [
       {

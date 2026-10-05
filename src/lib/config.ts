@@ -24,8 +24,9 @@ export const config = {
   get trustProxy() {
     return bool(process.env.TRUST_PROXY);
   },
-  get contentRemovalContact() {
-    return (process.env.CONTENT_REMOVAL_CONTACT || "").trim();
+  /** A URL or mailto: link for questions, concerns and data-removal requests. Leave unset until it is monitored. */
+  get contact() {
+    return (process.env.CONTACT_URL || "").trim();
   },
   get securityContact() {
     return (process.env.SECURITY_CONTACT || "").trim();
@@ -53,14 +54,44 @@ export const config = {
     return this.demo;
   },
   /**
-   * Comma-separated emails that become maintainers when they sign in with a VERIFIED email (Google).
-   * Lets you bootstrap the first maintainer on a host without shell access. It only promotes; it never demotes.
+   * Comma-separated emails that become admins when they sign in with a VERIFIED email (Google).
+   * Lets you bootstrap the first admin on a host without shell access. It only promotes; it never demotes.
+   * INITIAL_MAINTAINER_EMAILS (the old name) is still read so existing deployments keep working.
    */
-  get initialMaintainerEmails(): string[] {
-    return (process.env.INITIAL_MAINTAINER_EMAILS || "")
+  get initialAdminEmails(): string[] {
+    return (process.env.INITIAL_ADMIN_EMAILS || process.env.INITIAL_MAINTAINER_EMAILS || "")
       .split(",")
       .map((e) => e.trim().toLowerCase())
       .filter(Boolean);
+  },
+  /**
+   * Secret that encrypts pickup addresses, access notes and phone numbers at rest (AES-256-GCM; the 32-byte key is
+   * derived from this string). Required in production: generate with `openssl rand -base64 48`.
+   * Losing it makes stored pickup details unreadable, which is acceptable because they are purged within days.
+   */
+  get pickupEncryptionSecret() {
+    const s = process.env.PICKUP_ENCRYPTION_KEY;
+    if (s && s.length >= 32) return s;
+    if (this.isProd && !this.isBuild) {
+      throw new Error("PICKUP_ENCRYPTION_KEY must be set to a random string of at least 32 characters in production.");
+    }
+    return "dev-only-pickup-key-do-not-use-in-production-0123456789";
+  },
+  /** Pickup address, notes and phone are erased this many days after a pledge is collected, cancelled or a no-show. */
+  get pickupPurgeDays() {
+    return num(process.env.PICKUP_PURGE_DAYS, 7);
+  },
+  /** Coordinators and volunteers see a pickup's address from this many hours before its window. */
+  get pickupVisibleHoursBefore() {
+    return num(process.env.PICKUP_VISIBLE_HOURS_BEFORE, 24);
+  },
+  /** Pickups still open this many hours after their window ended are flagged overdue. */
+  get pickupOverdueHours() {
+    return num(process.env.PICKUP_OVERDUE_HOURS, 2);
+  },
+  /** "console" (default) logs a one-line summary; "noop" is silent. Real providers: see src/lib/email.ts. */
+  get emailProvider() {
+    return (process.env.EMAIL_PROVIDER || "console").trim().toLowerCase();
   },
   get signupLimitPerHour() {
     return num(process.env.AUTH_SIGNUP_LIMIT_PER_HOUR, 10);
@@ -69,5 +100,3 @@ export const config = {
     return num(process.env.AUTH_SIGNIN_LIMIT_PER_MINUTE, 10);
   },
 };
-
-export { ATTESTATION_TEXT } from "./attestation";

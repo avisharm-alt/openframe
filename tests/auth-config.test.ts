@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { freshDb } from "./helpers";
 import { getDb } from "@/lib/db";
-import { promoteConfiguredMaintainer } from "@/lib/bootstrap";
+import { promoteConfiguredAdmin } from "@/lib/bootstrap";
 import { buildAuthOptions, getAuth, randomDisplayName, resetAuthForTests } from "@/lib/auth";
 
 const KEYS = ["OPENFRAME_DEMO", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "AUTH_SECRET", "BASE_URL"];
@@ -70,15 +70,17 @@ describe("authentication configuration", () => {
     process.env.GOOGLE_CLIENT_SECRET = "secret";
     const g = (buildAuthOptions().socialProviders as { google: { mapProfileToUser: (p: unknown) => { name: string; image: string } } }).google;
     const mapped = g.mapProfileToUser({ name: "Real Person", given_name: "Real", picture: "https://lh3.googleusercontent.com/x", email: "p@example.com" });
-    expect(mapped.name).toMatch(/^student-\d{4}$/);
+    expect(mapped.name).toMatch(/^neighbour-\d{4}$/);
     expect(mapped.name).not.toContain("Real");
     expect(mapped.image).toBe("");
-    expect(randomDisplayName()).toMatch(/^student-\d{4}$/);
+    expect(randomDisplayName()).toMatch(/^neighbour-\d{4}$/);
   });
 });
 
-describe("maintainer bootstrap (INITIAL_MAINTAINER_EMAILS)", () => {
-  const mk = (email: string, verified: number, role = "student") => {
+describe("admin bootstrap (INITIAL_ADMIN_EMAILS)", () => {
+  afterEach(() => delete process.env.INITIAL_MAINTAINER_EMAILS);
+
+  const mk = (email: string, verified: number, role = "member") => {
     const db = getDb();
     const id = crypto.randomUUID();
     db.prepare('INSERT INTO "user" (id, name, email, emailVerified, createdAt, updatedAt, role) VALUES (?,?,?,?,?,?,?)').run(id, "n", email, verified, "x", "x", role);
@@ -86,33 +88,40 @@ describe("maintainer bootstrap (INITIAL_MAINTAINER_EMAILS)", () => {
   };
   const roleOf = (id: string) => (getDb().prepare('SELECT role FROM "user" WHERE id = ?').get(id) as { role: string }).role;
 
-  afterEach(() => delete process.env.INITIAL_MAINTAINER_EMAILS);
+  afterEach(() => delete process.env.INITIAL_ADMIN_EMAILS);
 
   it("promotes a listed, verified email (case-insensitively) and logs it", () => {
-    process.env.INITIAL_MAINTAINER_EMAILS = " Owner@Example.com , other@example.com ";
+    process.env.INITIAL_ADMIN_EMAILS = " Owner@Example.com , other@example.com ";
     const id = mk("owner@example.com", 1);
-    expect(promoteConfiguredMaintainer(id)).toBe(true);
-    expect(roleOf(id)).toBe("maintainer");
-    expect(promoteConfiguredMaintainer(id)).toBe(false); // already maintainer
-    const ev = getDb().prepare("SELECT action FROM moderation_event WHERE action = 'role_granted_by_config'").all();
+    expect(promoteConfiguredAdmin(id)).toBe(true);
+    expect(roleOf(id)).toBe("admin");
+    expect(promoteConfiguredAdmin(id)).toBe(false); // already admin
+    const ev = getDb().prepare("SELECT action FROM audit_event WHERE action = 'role_granted_by_config'").all();
     expect(ev).toHaveLength(1);
   });
   it("never promotes an unverified email, an unlisted email, or when nothing is configured", () => {
-    process.env.INITIAL_MAINTAINER_EMAILS = "owner@example.com";
+    process.env.INITIAL_ADMIN_EMAILS = "owner@example.com";
     const unverified = mk("owner@example.com", 0);
     const unlisted = mk("someone@example.com", 1);
-    expect(promoteConfiguredMaintainer(unverified)).toBe(false);
-    expect(promoteConfiguredMaintainer(unlisted)).toBe(false);
-    expect(roleOf(unverified)).toBe("student");
-    expect(roleOf(unlisted)).toBe("student");
-    delete process.env.INITIAL_MAINTAINER_EMAILS;
+    expect(promoteConfiguredAdmin(unverified)).toBe(false);
+    expect(promoteConfiguredAdmin(unlisted)).toBe(false);
+    expect(roleOf(unverified)).toBe("member");
+    expect(roleOf(unlisted)).toBe("member");
+    delete process.env.INITIAL_ADMIN_EMAILS;
     const verified = mk("owner2@example.com", 1);
-    expect(promoteConfiguredMaintainer(verified)).toBe(false);
+    expect(promoteConfiguredAdmin(verified)).toBe(false);
+  });
+  it("still honours the old INITIAL_MAINTAINER_EMAILS name", () => {
+    delete process.env.INITIAL_ADMIN_EMAILS;
+    process.env.INITIAL_MAINTAINER_EMAILS = "legacy@example.com";
+    const id = mk("legacy@example.com", 1);
+    expect(promoteConfiguredAdmin(id)).toBe(true);
+    expect(roleOf(id)).toBe("admin");
   });
   it("never demotes", () => {
-    process.env.INITIAL_MAINTAINER_EMAILS = "someone-else@example.com";
-    const id = mk("keeps@example.com", 1, "maintainer");
-    promoteConfiguredMaintainer(id);
-    expect(roleOf(id)).toBe("maintainer");
+    process.env.INITIAL_ADMIN_EMAILS = "someone-else@example.com";
+    const id = mk("keeps@example.com", 1, "admin");
+    promoteConfiguredAdmin(id);
+    expect(roleOf(id)).toBe("admin");
   });
 });

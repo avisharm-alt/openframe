@@ -3,7 +3,7 @@ import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { getDb } from "./db";
 import { config } from "./config";
-import { promoteConfiguredMaintainer } from "./bootstrap";
+import { promoteConfiguredAdmin } from "./bootstrap";
 
 /**
  * Better Auth with cookie sessions.
@@ -11,7 +11,8 @@ import { promoteConfiguredMaintainer } from "./bootstrap";
  * - Google's real name and photo are discarded at sign-in: every new account gets a random pseudonymous
  *   display name that the user can change on /account.
  * - The `role` column is server-controlled (`input: false`): clients cannot set it through any endpoint.
- *   Roles are granted only by a maintainer with shell access via `npm run admin:grant`.
+ *   The global role (member | admin) is changed only with shell access (`npm run admin:grant`). Chapter roles
+ *   (volunteer, coordinator) live in chapter_member and are granted through services that check the chapter.
  */
 export function buildAuthOptions() {
   return {
@@ -39,15 +40,15 @@ export function buildAuthOptions() {
     account: { encryptOAuthTokens: true },
     user: {
       additionalFields: {
-        role: { type: "string" as const, required: false, defaultValue: "student", input: false },
+        role: { type: "string" as const, required: false, defaultValue: "member", input: false },
       },
     },
     databaseHooks: {
       session: {
         create: {
-          // Bootstrap maintainers from INITIAL_MAINTAINER_EMAILS (verified emails only).
+          // Bootstrap admins from INITIAL_ADMIN_EMAILS (verified emails only).
           before: async (session: Record<string, unknown> & { userId: string }) => {
-            promoteConfiguredMaintainer(session.userId);
+            promoteConfiguredAdmin(session.userId);
             return { data: session };
           },
         },
@@ -88,7 +89,7 @@ export function buildAuthOptions() {
   };
 }
 
-export const randomDisplayName = () => `student-${crypto.randomInt(1000, 10000)}`;
+export const randomDisplayName = () => `neighbour-${crypto.randomInt(1000, 10000)}`;
 
 function make() {
   if (!!config.googleClientId !== !!config.googleClientSecret) {

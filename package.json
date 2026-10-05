@@ -2,7 +2,7 @@
   "name": "openframe",
   "version": "0.1.0",
   "private": true,
-  "description": "OpenFrame: a free, open-source, student-run practice question bank.",
+  "description": "OpenFrame: an open-source, student-run community care-package network.",
   "license": "MIT",
   "engines": {
     "node": ">=20.9"
@@ -15,11 +15,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts",
-    "db:import-questions": "tsx --env-file-if-exists=.env.local scripts/import-question-bank.ts",
     "db:seed-demo": "tsx --env-file-if-exists=.env.local scripts/seed-demo.ts",
     "db:backup": "tsx --env-file-if-exists=.env.local scripts/backup.ts",
+    "admin:add-chapter": "tsx --env-file-if-exists=.env.local scripts/add-chapter.ts",
+    "admin:purge-pickups": "tsx --env-file-if-exists=.env.local scripts/purge-pickups.ts",
+    "admin:notify-overdue": "tsx --env-file-if-exists=.env.local scripts/notify-overdue.ts",
     "admin:grant": "tsx --env-file-if-exists=.env.local scripts/grant-role.ts",
-    "admin:purge-guests": "tsx --env-file-if-exists=.env.local scripts/purge-guest-sessions.ts",
     "admin:delete-user": "tsx --env-file-if-exists=.env.local scripts/delete-user.ts",
     "e2e": "bash scripts/run-e2e.sh",
     "check": "npm run lint && npm run typecheck && npm test",
@@ -30,14 +31,9 @@
   "dependencies": {
     "better-auth": "1.7.7",
     "better-sqlite3": "13.0.3",
-    "katex": "0.19.0",
     "next": "16.3.8",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "react-markdown": "10.1.0",
-    "rehype-katex": "7.0.1",
-    "remark-gfm": "4.0.1",
-    "remark-math": "6.0.0",
     "zod": "4.6.5"
   },
   "devDependencies": {

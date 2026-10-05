@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 import { config } from "./config";
-import { importBundledQuestionBank } from "./question-bank";
+import { nowDate } from "./time";
 
 export type DB = Database.Database;
 
@@ -43,7 +43,6 @@ export function getDb(): DB {
   if (!g.__openframeDb) {
     const db = openDb(config.databasePath);
     migrate(db);
-    importBundledQuestionBank(db);
     g.__openframeDb = db;
   }
   return g.__openframeDb;
@@ -55,4 +54,4 @@ export function setDb(db: DB | undefined) {
 }
 
 export const uid = () => crypto.randomUUID();
-export const now = () => new Date().toISOString();
+export const now = () => nowDate().toISOString();

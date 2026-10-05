@@ -1,16 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import "katex/dist/katex.min.css";
 import "./globals.css";
 import { currentActor } from "@/lib/session";
 import { config } from "@/lib/config";
-import { isReviewer } from "@/lib/types";
 import { SignOutButton } from "@/components/AuthForms";
-import { SITE_NOTICE } from "@/lib/copy";
 
 export const metadata: Metadata = {
-  title: { default: "OpenFrame – student-run practice questions", template: "%s · OpenFrame" },
-  description: "A free, open-source, student-run question bank of student-contributed, AI-assisted practice questions.",
+  title: { default: "OpenFrame: care packages, by students and neighbours", template: "%s · OpenFrame" },
+  description: "An open-source, student-run network that collects what is needed for care packages for people experiencing homelessness, in London and Oshawa, Ontario.",
 };
 export const dynamic = "force-dynamic";
 
@@ -22,20 +19,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <a className="skip-link" href="#main">Skip to main content</a>
         {config.demo && (
           <div className="demo-banner" role="note">
-            Demo mode: all courses and questions are demonstration content.
+            Demo mode: all chapters, needs and people are demonstration data.
           </div>
         )}
-        <div className="site-notice" role="note" aria-label="About this site">
-          <div className="wrap">{SITE_NOTICE}</div>
-        </div>
         <header className="site">
           <div className="wrap">
             <Link href="/" className="brand">OpenFrame</Link>
             <nav className="main" aria-label="Main">
-              <Link href="/">Courses</Link>
-              <Link href="/saved">Saved &amp; history</Link>
-              <Link href="/course-notes">Upload course notes</Link>
-              {isReviewer(actor) && <Link href="/moderation">Moderation</Link>}
+              <Link href="/">Needs</Link>
             </nav>
             <div className="row small">
               {actor ? (
@@ -56,14 +47,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <div className="wrap">
             <nav aria-label="Policies">
               <Link href="/about">About</Link>
-              <Link href="/guidelines">Contribution guidelines</Link>
-              <Link href="/academic-integrity">Academic integrity</Link>
+              <Link href="/guidelines">Guidelines</Link>
               <Link href="/privacy">Privacy</Link>
-              <Link href="/content-removal">Content removal</Link>
             </nav>
             <p>
-              OpenFrame is a free, open-source, nonprofit-oriented student project (application code under the MIT license). No ads, no subscriptions, no sale of data.
-              It is not a registered charity. Practice scores are not predictions of exam results.
+              OpenFrame is a free, open-source, student-run project (application code under the MIT license). No ads, no payments, no sale of data.
+              It is not a registered charity and is not affiliated with any university.
             </p>
           </div>
         </footer>
